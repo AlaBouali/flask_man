@@ -3,7 +3,7 @@ import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,c
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.0.0"
+__version__="1.0.1"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -48,7 +48,7 @@ def install():
  for x in r:
   f.write('{}\n'.format(x))
  f.close()
- os.system(configs["app"].get("pip","pip3")+" install -r requirements.txt -U")
+ os.system(configs["app"].get("pip","pip3")+" install -r requirements.txt -U  --user")
 
 
 def set_firebase_bucket(s):
