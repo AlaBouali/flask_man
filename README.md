@@ -95,11 +95,11 @@ then open this link :
 <a href='http://127.0.0.1:12345/'>http://127.0.0.1:12345/</a>
 <br>
 <br>
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/img/cap1.png?token=AGZMSMPP3UTXGFNX25I7NTTB2SACI'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap1.png'>
 
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/img/cap2.png?token=AGZMSMLQGZQE5BTJHJE7AQ3B2SAHY'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap2.png'>
 
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/img/cap3.png?token=AGZMSMPB3YH7BCVAPJYVWVLB2SAK4'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap3.png'>
 
 # Running the application
 
