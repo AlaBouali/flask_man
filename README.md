@@ -23,7 +23,7 @@ Flask module to auto setup and manage the project and its configurations (app co
 <li>CORS's protection by validating the origin of the request.</li>
 <li>Built-in functions to validate user's input against: SSRF and Path Traversal.</li>
 <li>Ready to deploy directly on Heroku or shared Hosting site.</li>
-li>Create an instant backup for all your project's files.</li>
+<li>Create an instant backup for all your project's files.</li>
 </ul>
 <br>
 The security in the this project is achieved via <a href="https://gitub.com/AlaBouali/sanitizy">sanitizy</a><br>
