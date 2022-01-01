@@ -2407,7 +2407,7 @@ html body {
          <form enctype="multipart/form-data" id="myform" action = "/go" method = "POST" 
          enctype = "multipart/form-data"><table id="form_" cellspacing="0" cellpadding="0">
          <div class="input-group input-group-lg">
-         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Database:&nbsp;  &nbsp;</p></b> </td><td>
+         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Mode:&nbsp;  &nbsp;</p></b> </td><td>
          <select class="form-control" name="go" id="go">
          <option value="dev">Development</option>
          <option value="pro">Production</option>
