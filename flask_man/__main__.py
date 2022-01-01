@@ -3,7 +3,7 @@ import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,c
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.1.1"
+__version__="1.1.4"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -567,7 +567,7 @@ def {}({}):
  return ""
 
 """.format(x.replace('.','_'),su,x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
- script1="""import flask
+ script1="""import flask,vonage
 from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
@@ -848,6 +848,10 @@ allowed_mimetypes_="""+str(configs["app"]["allowed_mimetypes"])+"""
 
 
 permanent_session=True
+
+
+
+vonage_creds="""+str(configs["app"]["vonage_creds"])+"""
 
 
 
@@ -1445,6 +1449,21 @@ def send_mail(subject='',sender=app.config['MAIL_USERNAME'],recipients=[],body='
 
 
 
+#https://dashboard.nexmo.com/getting-started/sms
+
+
+def get_vonage_client():
+ return vonage.Client(key=vonage_creds["api_key"], secret=vonage_creds["api_secret"])
+
+
+
+
+def send_sms(sender,to,text):
+  client=get_vonage_client()
+  sms = vonage.Sms(client)
+  return sms.send_message({"from": sender,"to": to.replace('+','').replace('-','').replace(' ',''),"text": text})
+
+
 
 def read_configs():
  f = open('config.json')
@@ -1603,6 +1622,7 @@ def update_configs():
  d["app"]["accepted_origin_domains"]=accepted_origin_domains
  d["app"]["config"]=server_conf
  d[database_type]["connection"]=database_credentials
+ d["app"]["vonage_creds"]=vonage_creds
  write_configs(d)
 
 
@@ -1715,6 +1735,11 @@ def init_configs():
                 'flask-plus.appspot.com',
         "firebase_apikey":
                 "AIzaSyD13N7xRICcaMCQdqIpfWNXItlYnN-DiqI",
+        "vonage_creds":
+                {
+                 "api_key": '',
+                 "api_secret":''
+                },
         "additional_headers":
                 {
                 'X-Frame-Options':'SAMEORIGIN',
