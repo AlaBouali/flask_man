@@ -105,7 +105,7 @@ then open this link :
 <a href='http://127.0.0.1:12345/'>http://127.0.0.1:12345/</a>
 <br>
 <br>
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/1.png'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/c1.png'>
 
 <img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/2.png'>
 
