@@ -72,11 +72,20 @@ args:
                       file and delete the code from "routes.py"
 
 
+        firebase_apikey: set the firebase APIKey
+
+
         firebase_bucket: set the firebase storage bucket
 
 
         firebase_configs: copy the firebase storage bucket's configs'
                           file to the local configs file
+
+
+        pro: set project to production mode
+
+
+        dev: set project to development mode
 
 </pre></div>
 # Manager
@@ -242,6 +251,17 @@ Example 2:
 
 
 
+** Set firebase APIKey:
+
+
+Example :
+
+
+        flask_man firebase_apikey "kjkhgyftrdfghjklkjhgfrdefg"
+
+
+
+
 ** Set firebase storage bucket:
 
 
@@ -283,4 +303,26 @@ Example 2:
 
 
         flask_man db postgresql
+
+
+
+
+** Go production:
+
+
+Example :
+
+
+        flask_man pro
+
+
+
+
+** Go development:
+
+
+Example :
+
+
+        flask_man dev
 </pre></div>
