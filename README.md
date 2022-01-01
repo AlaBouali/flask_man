@@ -104,13 +104,13 @@ then open this link :
 <a href='http://127.0.0.1:12345/'>http://127.0.0.1:12345/</a>
 <br>
 <br>
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap1.png'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/1.png'>
 
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap2.png'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/2.png'>
 
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap3.png'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/3.png'>
 
-<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/cap4.png'>
+<img src='https://raw.githubusercontent.com/AlaBouali/flask_man/main/4.png'>
 
 # Running the application
 
