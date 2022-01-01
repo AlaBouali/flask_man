@@ -3,7 +3,7 @@ import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,c
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.1.4"
+__version__="1.1.5"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -238,7 +238,7 @@ def delete_route(x):
 
 def upgrade():
  p="pip" if sys.version_info < (3,0) else "pip3"
- os.system(p+" install flask_man -U")
+ os.system(p+" install flask_man -U   --user")
 
 
 def file_exists(path):
