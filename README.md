@@ -14,6 +14,7 @@ Flask module to auto setup and manage the project and its configurations (app co
 <li>Upload files to firebase.</li>
 <li>Users authentication and management with firebase ( create / update / delete / signup / signin / lookup / reset password ... ).</li>
 <li>Send mail.</li>
+<li>Send SMS ( you need an account <a href="https://identity.nexmo.com/">here</a> and get you API Key and Secret Key ) .</li>
 <li>High level access control ( visitor , user , admin ) achieved with the decorators.</li>
 <li>Secure the application from SQL-Injection by auto-escape: URL arguments, request's body's parameters and dynamic URIs.</li>
 <li>Supports JWT-Authentication.</li>
