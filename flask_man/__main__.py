@@ -3,7 +3,7 @@ import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,c
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.0.1"
+__version__="1.1.1"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -51,6 +51,21 @@ def install():
  os.system(configs["app"].get("pip","pip3")+" install -r requirements.txt -U  --user")
 
 
+
+def set_firebase_apikey(s):
+ d=read_file("settings.py")
+ l=[ x for x in d.split('\n')]
+ c=[]
+ for x in l:
+  if x.startswith('firebase_apikey=')==True:
+   x="firebase_apikey='{}'".format(s)
+  c.append(x)
+ write_file("settings.py",'\n'.join(c))
+ configs=read_configs()
+ configs['app']['firebase_apikey']=s
+ write_configs(configs)
+
+
 def set_firebase_bucket(s):
  d=read_file("settings.py")
  l=[ x for x in d.split('\n')]
@@ -64,6 +79,26 @@ def set_firebase_bucket(s):
  configs['app']['firebase_bucket']=s
  write_configs(configs)
 
+
+def go_pro():
+ d=read_file("settings.py")
+ l=[ x for x in d.split('\n')]
+ c=[]
+ for x in l:
+  if x.startswith('dev_mode=')==True:
+   x="dev_mode=False"
+  c.append(x)
+ write_file("settings.py",'\n'.join(c))
+
+def go_dev():
+ d=read_file("settings.py")
+ l=[ x for x in d.split('\n')]
+ c=[]
+ for x in l:
+  if x.startswith('dev_mode=')==True:
+   x="dev_mode=True"
+  c.append(x)
+ write_file("settings.py",'\n'.join(c))
 
 def write_firebase_configs_(d):
  configs=read_configs()
@@ -537,10 +572,15 @@ from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 
+import requests as requests_local
 import flask_recaptcha 
 
 import flask_limiter
 from flask_limiter.util import get_remote_address
+
+
+
+from flask_debugtoolbar import DebugToolbarExtension
 
 import flask_mail
 
@@ -548,6 +588,11 @@ import json,os,random,sys,datetime,ssl,mimetypes,time,logging
 
 from logging.handlers import RotatingFileHandler
 
+
+from firebase_admin import auth
+from firebase_admin.auth import UserRecord
+
+import firebase_admin
 
 import sanitizy
 
@@ -686,7 +731,7 @@ def safe_files(f):
 def valid_recaptcha(f):
  @functools.wraps(f)
  def validate(*args, **kwargs):
-  if recaptcha.verify():
+  if recaptcha_app.verify():
    return f(*args, **kwargs)
   else:
    return "Invalid recaptcha",401
@@ -750,13 +795,17 @@ def render_template(t,**kwargs):
 
 
 
+
 #https://thepoints.medium.com/upload-data-to-firebase-cloud-firestore-with-10-line-of-python-code-1877690a55c6
 
 
 firebase_creds_file='"""+configs['app'].get("firebase_creds_file",'firebase_creds.json')+"""'
 
 
-firebase_storage_bucket='"""+configs['app'].get("firebase_bucket",'')+"""'
+firebase_apikey='"""+str(configs['app'].get("firebase_apikey",None))+"""'
+
+
+firebase_storage_bucket='"""+configs['app'].get("firebase_bucket",None)+"""'
 
 
 firebase_creds=None
@@ -764,7 +813,7 @@ firebase_creds=None
 
 if firebase_storage_bucket!=None and firebase_storage_bucket.strip()!='':
   os.environ["GOOGLE_APPLICATION_CREDENTIALS"]=firebase_creds_file
-
+  firebase_admin_app = firebase_admin.initialize_app()
 
 
 
@@ -924,9 +973,20 @@ admin_indicator="admin"
 home_page_endpoint='"""+home_page_redirect+"""'
 
 
+dev_mode=True
 
 
-recaptcha =flask_recaptcha.ReCaptcha(app)
+recaptcha_app =flask_recaptcha.ReCaptcha(app)
+
+
+if dev_mode==False:
+ server_conf['ENV']= 'production'
+ server_conf['DEBUG']= False
+ server_conf['FLASK_ENV']= 'production'
+else:
+ server_conf['ENV']= 'development'
+ server_conf['DEBUG']= True
+ server_conf['FLASK_ENV']= 'development'
 
 
 
@@ -943,6 +1003,9 @@ app.permanent_session_lifetime = datetime.timedelta(**session_timeout)
 
 
 Flask_Mailler = flask_mail.Mail(app)
+
+
+toolbar_app = DebugToolbarExtension(app)
 """
  script3="""from settings import *
 
@@ -1214,6 +1277,126 @@ def upload_all_to_firebase(f):
 
 
 
+#https://firebase.google.com/docs/auth/admin/manage-users?hl=en#python_6
+
+
+
+def firebase_create_user(**kwargs):
+ return auth.create_user(**kwargs).__dict__
+ 
+
+
+def firebase_fetch_user_by_id(uid):
+ return auth.get_user(uid).__dict__
+
+
+
+def firebase_fetch_user_by_email(email):
+ return auth.get_user_by_email(email).__dict__
+
+
+
+def firebase_fetch_user_by_phone(phone):
+ return auth.get_user_by_phone_number(phone).__dict__
+
+
+
+def firebase_list_users():
+ return auth.list_users().__dict__
+
+
+
+
+def firebase_update_user(user_id, **kwargs):
+    return auth.update_user(user_id, **kwargs).__dict__
+
+
+
+
+
+def firebase_delete_user(uid):
+ return auth.delete_user(uid)
+
+
+
+def firebase_delete_users(*args):
+ return auth.delete_users(args)
+
+
+#https://blog.icodes.tech/posts/python-firebase-authentication.html
+
+
+
+def firebase_signup(**kwargs):
+ kwargs.update({'returnSecureToken': True})
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={}'.format(firebase_apikey),data=kwargs)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+def firebase_signin(email,password):
+ details={'email':email,'password':password,'returnSecureToken': True}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={}'.format(firebase_apikey),data=details)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+def firebase_verify_email(idToken):
+ data={"requestType":"VERIFY_EMAIL","idToken":idToken}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={}'.format(firebase_apikey), data=data)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+
+def firebase_reset_password(email):
+ data={"requestType":"PASSWORD_RESET","email":email}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={}'.format(firebase_apikey), data=data)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+
+
+def firebase_anonymous_signin():
+ data={"returnSecureToken":"true"}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={}'.format(firebase_apikey), data=data)
+  return json.loads(r.text)
+ except:
+  return {}
+
+  
+  
+def firebase_user_data(idToken):
+ details={'idToken':idToken}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={}'.format(firebase_apikey), data=details)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+
+def firebase_delete_account(idToken):
+ data={"idToken":idToken}
+ try:
+  r=requests_local.post('https://identitytoolkit.googleapis.com/v1/accounts:delete?key={}'.format(firebase_apikey), data=data)
+  return json.loads(r.text)
+ except:
+  return {}
+
+
+
+
 def no_lfi(path):
  return sanitizy.PATH_TRAVERSAL.check(path)
 
@@ -1394,15 +1577,16 @@ def downloads(file):
   write_json(configs['app'].get("firebase_creds_file","firebase_creds.json"),{
   "type": "service_account",
   "project_id": "flask-plus",
-  "private_key_id": "e33b113c02e14bc884bbc48d6c4a110f38b37b1f",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCRONAGcd/iQG+j\nsZhw7mtPlNYyZjOD9K/cBcZ26bv1rMf2089SWD9wbBy8yK7U/um9ultWnn6onWkb\niEXs3NQ6ECjihARHsVGP21wY9uN5Gk79p4JKY6kTFWOXSaQvPzZ/8JOzHflzAKhd\nkg9KMx6KF0DCiFC6qW8RJBNGaz4OfSJykmYCwjKXwAk1B5kXKwcy54nErMBrKtlr\n+vFs8/a6E/V6P6pKZ3UftYLCIe1f+5qSaCpdga7wQUGK6qScRhEK/ku2qMTbbdVC\nH4xLWUJWjl2xl6py788TDj7sSQdWRmnaDTtIJ7AAPy8NgurHzH6yFNBfGA/JUiTy\nqvnhqwTvAgMBAAECggEANeocuTfPwcTgbaqCiPLLHlmIiF+PIp9WJt5yBzXRlW0X\nNBkA8HZY3xkUNjZfSi51gv3L6UWgimMeYZ1fMIfvtrrHIwmWOTOorzrmX1JRs2VE\nDEIDSjDj1XTsa39omC3kwu0DOM2ZDcwhtdODH64I2YW2gkJvjk1XMcrt6QfpmyDk\nyNJtzoXJgiwK+da+CUxpsGpqM8tNhDH9qz6+YSnn3zbGde3pERWzgowmdQO2SZK5\nAgyCek9n4KuRJ2BXOMi8c9cPmTags0mo0kYAet9Wu277mHcCWwVEhB471IWN8Law\n9Pxg0XSm+27233SYvGPq8FVOaOwngymWNtogRBt28QKBgQDHVOWIzElubASDBKVf\nB7crgysipXWUex1HgnBMXzTJtJAxMs4M9J2D/lPRqLfC+iS88vBGeArJVP9p8gQc\nysAfGQE7b7rSssuWNnNgaiKByNqOKPCFwUFOlD0YAsGCOOgR3Ppc6k6wgwSzBiGZ\n4RKJjmP26rI0sLsxifBM0AoAJwKBgQC6geFcLUprI0nWUoolmyR+gmXAVP8T9C7B\norTEODLBOhg6s8p4HCIV07RcD/Q8oPBVEOgDThpAq3SpxBYXms/DCLsRWO3yZB5u\nWemmxdlmB0gvdEF5tTs7jdgroOJukG+ntrvLVbhVoNV+0Agk0Os6ABgEGJzGF3kr\nvKVDcMSJ+QKBgF/b/wq7m7DDt6O+bzz1O+xsBymBQrtmPZ1vKExCGOPLtvBCC3+F\nf97DR1HzfnQA0fwgJNbu0dkizDYKElo6UwxhfQs1XzYGkAusIe5C/FdH3XsySwE4\nAA0nEv5iDOdwMIKur6RRdghC6daiYzRaXgzS8lYDZjIar9tSB8MY5UZPAoGADbD5\nJTYh72mAwx3+DDKuZCcYZx0WOJXFVOunz3u8phiorK6EH3sZOXb4F4YITOcXnXcH\nQS7bmIG9p7TAVm1D8TJT4TshBJk67qjlERwXEHlaYDltkQyv03hfNRyzYqBxweMV\nOCELziVnZs7IukMn8XMOUEaqQ5R3jbFkhGXj16kCgYBVT72lb7l8upp1wRKS7uxR\n1iBhBH+sd5WTVy58c5eJ/Yh3Wk9/EY/eX65v4PsiAT07+yVijOySrV67XKZ47z5W\n2ofPgK1c6gtEiERZKEkT2RuoYZGUT2Dnin79dCvopfYg4lJsFFamnzT/C9H54qf7\nqnTOn60B8dbp6YAuvwuT+w==\n-----END PRIVATE KEY-----\n",
+  "private_key_id": "646d5064c79d386b7ad42cd2ccd1725c8d7397ea",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCcbG4N5fJaIOm7\nwg4yp4Ct61XvwV0QtMNf4aZqVF6OAKQpcMIGTnibo2iS6BY5k6fAf8h8X75a5EpY\nQ25F3hmZs2r+alq8t9/Ode2artTKA/fOJPc6UInU7kmh5GmzmSnylE/RbEFkS+4n\ncFjVvUW/YWOjsMeOeC2jj3cDvZM0GqcWYfO8TLs0n9KgSJXTEON8hnoJ10pupgoI\n2NkxuyQ5cmyYn32RFlXNap/r3kaNqCcwxEQVfN9ba8JT6K8r25YUrTZSXcLN/1MN\nhrzmFXrBfypkvxGhwa9p4FIIeqcudf3hoJbc4h+OlnlrZV/TSeQvL6rzaQhtkHk9\nGQbdu5O7AgMBAAECggEAKnm3GMcMHDU7wuRa/p5FbvSsjUIwh0zOkMaxbcYjNuQt\nr6MSzKuaTIj+6IVlI5VYxAju4/cLtZqwJW+KDibVRMtXjmZK5Vv4xhN3xb0bww94\nxt161Lbx9oQOMovXuBErNtfXJMMErrt/m+4B8WhH/EPxzo0+Yw13NybJ5pYf1tHJ\nODG/JilwuKy3QDJGV1Gjn8uoB6LQ4/85aN0IFDMSRaFSExHI6M4qeZw1dHdSuwzg\n/MmwadV9vgJoqgcsP3FXwVL05KlM5Ml7i0wmjdZ7wgppp6uYxumt8w8jhNm/PKem\nLDgG7Kprn63lSyFX46ssKxJxh14xEGbor2nmnONUIQKBgQDO6ES1IBh0ixDBpf/w\nxvQ0v0cLJa2Ag8Ingop7sTYIQ6TQhnGHL11Rl2PBu6/LbqJ4PGQldcBjTx6y9oxU\nO5gdOKtNI6y52BfO80Bzj6dZwmmDqbMcasWMxNxHbe6HS5L3AXdhgEMBwT3pq/2B\nd944TxHnDPgDRa6ITdZ7ZTvYBwKBgQDBibwCeyrMPf53gK16RXsQp0cH9ecImMcJ\nXRJWHnt23WlgoCKgjQHCNvdnIEn/Qj4wKvGCLUKA8juWLVD8phH/lQU3YtmFgcCd\nEHB+tQNAlDMd3j5qN5Uf3ztNHwvOi9fhedJGuq6IgrGBhTGfGt+A+aB9Yugfs9Ke\nnhcDv7TxrQKBgDnGackZ2TpRyrAIJluZcn94GeJm9ve30vMtZHX9mdTc7py7rd/N\nvgUWfOiP/BqWHg/s7Rn4s2wHn87hQXYT3fnq5Qp5N7X9PUiwbALYziYmP0hgjn8U\n4WzZW5kmfUCSPctzQV6cbhmDWEJzoCoSyp52lc0qteZUAtRUx9tU/UzpAoGAcC+L\n2RBWRaAl8lWXuYmvBX9BkF69NmGA9m+J4nu267b6j3UjvVcfTtoX3SJ9Ykaez8ME\nzYW4yBAh9DJ+gIUvZ6yVIn7dQiNtaF4QJ5J7uSJu4wBhw6ZGffwjXtgBOxAa6mt4\nNWGfLCg+BqsTkXu9VQDeQ/BiR4YwL5vKEXU9yN0CgYBJuBfWpA/GSrA63hfbHwuE\n7R2fwcbA3SCixKBn0kFWj20k1kIZG+qhL4sdbIhxzUO8K+iscaDYSoxirm52XFg8\n55KCEHqsV2xgmK6Mbxh/1N/0k5KJNJzAploSpdJj23nVOAuAvZxC/yA3EK8Co4Pe\nY9PQq4anhHcyzoQFXN+TcA==\n-----END PRIVATE KEY-----\n",
   "client_email": "firebase-adminsdk-8z7xd@flask-plus.iam.gserviceaccount.com",
   "client_id": "112885768186449207156",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-8z7xd%40flask-plus.iam.gserviceaccount.com"
-})
+}
+)
  write_file("handlings.py",script4)
  write_file("templates.py",s1)
  write_file("routes.py",s2)
@@ -1472,7 +1656,7 @@ def init_configs():
                         1
                 },
          "config":{
-                'ENV': 'production', 
+                'ENV': 'development', 
                 'DEBUG': True, 
                 'TESTING': False, 
                 'PROPAGATE_EXCEPTIONS': None, 
@@ -1529,6 +1713,8 @@ def init_configs():
                 "firebase_creds.json",
         "firebase_bucket":
                 'flask-plus.appspot.com',
+        "firebase_apikey":
+                "AIzaSyD13N7xRICcaMCQdqIpfWNXItlYnN-DiqI",
         "additional_headers":
                 {
                 'X-Frame-Options':'SAMEORIGIN',
@@ -1547,7 +1733,7 @@ def init_configs():
         "uploads":
             [],
         "requirements":
-            ["flask","sanitizy","flask-limiter","google-cloud-storage","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2","psycopg2","pyodbc","cx_Oracle"],
+            ["flask","sanitizy","flask-limiter","flask-debugtoolbar","firebase_admin","google-cloud-storage","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2","psycopg2","pyodbc","cx_Oracle"],
         "pip":
             "pip" if sys.version_info < (3,0) else "pip3"
         },
@@ -1720,7 +1906,7 @@ def set_sqlite_database(data):
 
 supported_dbs=["sqlite","mysql","postgresql","mssql","oracle"]
 supported_inits=["app","config","install"]
-supported_args=["init","db","upgrade","examples","add_template","delete_template","add_route","delete_route","firebase_bucket","firebase_configs","manager"]
+supported_args=["init","db","upgrade","examples","add_template","delete_template","add_route","delete_route","firebase_apikey","firebase_bucket","firebase_configs","manager","pro","dev"]
 
 def help_msg(e):
   dbs=" or ".join(supported_dbs)
@@ -1767,11 +1953,20 @@ args:
                       file and delete the code from "routes.py"
         
         
+        firebase_apikey: set the firebase APIKey
+        
+        
         firebase_bucket: set the firebase storage bucket
         
         
         firebase_configs: copy the firebase storage bucket's configs' 
-                          file to the local configs file""")
+                          file to the local configs file
+        
+        
+        pro: set project to production mode
+        
+        
+        dev: set project to development mode""")
 
 
 def examples_msg():
@@ -1903,6 +2098,17 @@ Example 2:
 
 
 
+** Set firebase APIKey:
+
+
+Example :
+
+
+        flask_man firebase_apikey "kjkhgyftrdfghjklkjhgfrdefg"
+
+
+
+
 ** Set firebase storage bucket:
 
 
@@ -1944,7 +2150,28 @@ Example 2:
 
 
         flask_man db postgresql
-""")
+
+
+
+
+** Go production:
+
+
+Example :
+
+
+        flask_man pro
+        
+
+
+
+** Go development:
+
+
+Example :
+
+
+        flask_man dev""")
 
 
 
@@ -2000,6 +2227,14 @@ def manager():
   return redirect('/') 
   
   
+ @app.route('/go',methods=["POST"])
+ def go():
+  t=request.form["go"]
+  if t in ["dev","pro"]:
+   os.system('flask_man '+t)
+  return redirect('/') 
+  
+  
  @app.route('/create',methods=["POST"])
  def create():
   t=request.form["db"]
@@ -2028,6 +2263,11 @@ def manager():
   os.remove(t)
   return redirect('/') 
   
+ 
+ @app.route('/fb_key',methods=["POST"])
+ def fb_key():
+  set_firebase_apikey(request.form["key"])
+  return redirect('/') 
  
  @app.route('/upgrade',methods=["POST"])
  def upgrade_():
@@ -2162,6 +2402,23 @@ html body {
        
       </center>
 <br><br><br>   
+<center><h3>Production/Development</h3>
+<br>   
+         <form enctype="multipart/form-data" id="myform" action = "/go" method = "POST" 
+         enctype = "multipart/form-data"><table id="form_" cellspacing="0" cellpadding="0">
+         <div class="input-group input-group-lg">
+         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Database:&nbsp;  &nbsp;</p></b> </td><td>
+         <select class="form-control" name="go" id="go">
+         <option value="dev">Development</option>
+         <option value="pro">Production</option>
+         </select></td><td><div class="col text-center"><input id="btn" type="submit" class="button btn-block btn-lg" value="Go" /></div></td></tr>
+      </center>
+      </table>
+      </div>
+      </form>  
+       
+      </center>
+<br><br><br>   
 <center><h3>Change Database</h3>
 <br>   
          <form enctype="multipart/form-data" id="myform" action = "/db" method = "POST" 
@@ -2222,6 +2479,19 @@ html body {
         
       </center>
 <br><br>    <br>    
+<center><h3>Set Firebase APIKey</h3>
+<br>   
+         <form enctype="multipart/form-data" id="myform" action = "/fb_key" method = "POST" 
+         enctype = "multipart/form-data"><table id="form_" cellspacing="0" cellpadding="0">
+         <div class="input-group input-group-lg">
+         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Key:&nbsp;  &nbsp;</p></b> </td>
+         <td><input size="40" value='' placeholder="jhgfdfghjklkjhgfgh" class="form-control" id="name" type = "text" name = "key" required/>
+         </td><td><div class="col text-center"><input id="btn" type="submit" class="button btn-block btn-lg" value="Set" /></div></td></tr>
+      </table>
+      </div>
+      </form>  
+        
+      </center><br><br>    <br>    
 <center><h3>Set Firebase Storage Bucket</h3>
 <br>   
          <form enctype="multipart/form-data" id="myform" action = "/fsb" method = "POST" 
@@ -2291,6 +2561,12 @@ def main():
  if sys.argv[1]=="upgrade":
   upgrade()
   sys.exit()
+ if sys.argv[1]=="pro":
+  go_pro()
+  sys.exit()
+ if sys.argv[1]=="dev":
+  go_dev()
+  sys.exit()
  if sys.argv[1]=="manager":
   manager()
   sys.exit()
@@ -2312,6 +2588,9 @@ def main():
  if sys.argv[1]=="firebase_bucket":
   set_firebase_bucket(sys.argv[2])
   sys.exit()
+ if sys.argv[1]=="firebase_apikey":
+  set_firebase_apikey(sys.argv[2])
+  sys.exit()
  if sys.argv[1]=="firebase_configs":
   file_=sys.argv[2]
   write_firebase_configs_(file_)
@@ -2324,7 +2603,7 @@ def main():
   sys.exit()
  if sys.argv[1]=="init" and sys.argv[2]=="app":
   try:
-   init_app()
+    init_app()
   except Exception as e:
    print(e)
    help_msg('Missing configs ! Try runing: flask_man init config')
