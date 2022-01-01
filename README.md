@@ -12,6 +12,7 @@ Flask module to auto setup and manage the project and its configurations (app co
 <li>Have customizable configurations at "settings.py" which most of them are loaded from "config.json" ( created on the project's creation ) which is also updated when the configurations are changed, every time the application starts.</li>
 <li>Save files locally, filter them by their mimetypes and extensions, and serve them securily.</li>
 <li>Upload files to firebase.</li>
+<li>Users authentication and management with firebase ( create / update / delete / signup / signin / lookup / reset password ... ).</li>
 <li>Send mail.</li>
 <li>High level access control ( visitor , user , admin ) achieved with the decorators.</li>
 <li>Secure the application from SQL-Injection by auto-escape: URL arguments, request's body's parameters and dynamic URIs.</li>
