@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="flask_man",
-    version="1.1.3",
+    version="1.1.8",
     author="AlaBouali",
     author_email="trap.leader.123@gmail.com",
     description="Flask module to auto setup and manage the project and its configurations (app code, templates, databases...)",
@@ -12,7 +12,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/AlaBouali/flask_man",
     python_requires=">=2.7",
-    install_requires=["flask","pymysql","cryptography","sanitizy","psycopg2","pyodbc","cx_Oracle"],
+    install_requires=["flask","pymysql","cryptography","sanitizy","psycopg2","pyodbc","cx_Oracle","Flask-SQLAlchemy"],
     packages=["flask_man"],
     entry_points={ 'console_scripts': ['flask_man = flask_man.__main__:main' ] },
     license="MIT License",
