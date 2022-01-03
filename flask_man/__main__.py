@@ -3,7 +3,7 @@ import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,c
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.1.5"
+__version__="1.1.8"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -103,6 +103,49 @@ def go_dev():
 def write_firebase_configs_(d):
  configs=read_configs()
  shutil.copyfile(d,configs['app']["firebase_creds_file"])
+
+
+
+def add_model(x):
+ x=x.capitalize()
+ configs=read_configs()
+ r=configs["app"].get("models",[])
+ if x in r:
+  return 
+ s="""
+
+class {}(flask_db.Model):
+ pass
+
+
+""".format(x)
+ r.append(x)
+ configs["app"]["models"]=r
+ write_configs(configs)
+ add_to_file("models.py",s)
+
+
+
+def delete_model(x):
+ configs=read_configs()
+ x=x.capitalize()
+ r=configs["app"].get("models",[])
+ if x not in r:
+  return 
+ r.remove(x)
+ configs["app"]["models"]=r
+ write_configs(configs)
+ d=read_file("models.py")
+ l=d.split("class")
+ s=''
+ for i in l:
+  if i.strip().startswith(x)==False:
+   if "from database import *" not in i:
+    s+="\n\n\nclass "+i.strip()
+   else:
+    s+=i.strip()
+ write_file("models.py",s.strip()+"\n\n")
+
 
 
 def add_template(x):
@@ -276,16 +319,41 @@ def get_db_code(configs):
 import """+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+""" as database_connector
 
 
+db_connector='"""+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+"""'
+
 database_credentials="""+db_con+"""
 
 
-database_structure="""+str(configs["database"]["tables_names"])+"""
 
 
 database_type='"""+configs["database"].get("database_type",'sqlite')+"""'
 
 
+#https://overiq.com/flask-101/database-modelling-in-flask/
 
+
+if database_type=='sqlite':
+ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'+database_credentials['file']
+elif database_type=='mysql' or database_type=='mariadb':
+ app.config['SQLALCHEMY_DATABASE_URI'] = database_type+'+'+db_connector+'://{}:{}@{}:{}/{}'.format(database_credentials['user'],database_credentials['passwd'],database_credentials['host'],database_credentials['port'],database_credentials['db'])
+elif database_type=='postgresql':
+ c={}
+ d=database_credentials.split()
+ for x in d:
+  c.update({x.split('=')[0]:x.split('=')[1]})
+ app.config['SQLALCHEMY_DATABASE_URI'] = database_type+'+'+db_connector+'://{}:{}@{}/{}'.format(c['user'],c['password'],c['host'],c['dbname'])
+elif database_type=='mssql':
+ c={}
+ d=database_credentials.split(';')
+ for x in d:
+  c.update({x.split('=')[0]:x.split('=')[1]})
+ app.config['SQLALCHEMY_DATABASE_URI'] = database_type+'+'+db_connector+'://{}:{}@{}/{}'.format(c['UID'],c['PWD'],c['SERVER'],c['DATABASE']) 
+elif database_type=='oracle':
+ app.config['SQLALCHEMY_DATABASE_URI'] = database_type+'+'+db_connector+'://{}:{}@{}'.format(database_credentials['user'],database_credentials['passwd'],database_credentials['dsn'])
+
+
+
+flask_db=flask_sqlalchemy.SQLAlchemy(app)
 
 
 
@@ -567,7 +635,7 @@ def {}({}):
  return ""
 
 """.format(x.replace('.','_'),su,x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
- script1="""import flask,vonage
+ script1="""import flask,vonage,flask_admin,flask_sqlalchemy 
 from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
@@ -618,7 +686,7 @@ from google.cloud import storage
 
 
 
-def private(f):
+def authenticated_only(f):
  @functools.wraps(f)
  def validate(*args, **kwargs):
   if validate_logged_in(session)==True:
@@ -631,7 +699,7 @@ def private(f):
 
 
 
-def admin(f):
+def admin_only(f):
  @functools.wraps(f)
  def validate(*args, **kwargs):
   if validate_is_admin(session)==True:
@@ -978,6 +1046,7 @@ home_page_endpoint='"""+home_page_redirect+"""'
 
 
 dev_mode=True
+
 
 
 recaptcha_app =flask_recaptcha.ReCaptcha(app)
@@ -1492,7 +1561,7 @@ def download_this(path,root_dir=downloads_folder):
  return "Not Found",404
 """
  db_s=get_db_code(configs)
- script4="""from database import *
+ script4="""from models import *
 
 #make sure everything is alright before doing anything
 
@@ -1607,9 +1676,14 @@ def downloads(file):
 }
 )
  write_file("handlings.py",script4)
+ write_file("models.py","""from database import *
+
+#NOTE: replace "db" variable in the tutorials with "flask_db" and you won't get errors :)
+
+""")
  write_file("templates.py",s1)
  write_file("routes.py",s2)
- write_file(configs["app"].get('name','app')+".py","""from templates import *
+ write_file(configs["app"].get('name','app')+".py","""from admin_view import *
 
 def update_configs():
  d=read_configs()
@@ -1626,6 +1700,9 @@ def update_configs():
  write_configs(d)
 
 
+flask_db.create_all()
+
+flask_db.init_app(app)
 
 update_configs()
 
@@ -1634,6 +1711,16 @@ if __name__ == '__main__':
    app.run(**app_conf)
 """)
  write_file('passenger_wsgi.py',"from "+configs["app"].get('name','app')+" import app as application")
+ write_file('admin_view.py',"""from templates import *
+
+#if you want an admin interface, uncomment this part and follow "flask-admin" 's tutorials 
+
+'''
+
+admin_app = flask_admin.Admin(app, name="Flask's admin page", template_mode='bootstrap3')
+
+'''
+""")
  os.makedirs("templates", exist_ok=True)
  os.makedirs("logs", exist_ok=True)
  if configs["app"].get('uploads',None)!=None:
@@ -1757,8 +1844,10 @@ def init_configs():
             [],
         "uploads":
             [],
+        "models":
+            [],
         "requirements":
-            ["flask","sanitizy","flask-limiter","flask-debugtoolbar","firebase_admin","google-cloud-storage","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2","psycopg2","pyodbc","cx_Oracle"],
+            ["flask","sanitizy","flask-limiter","flask-admin","flask-debugtoolbar","firebase-admin","google-cloud-storage","Flask-SQLAlchemy","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2","psycopg2","pyodbc","cx_Oracle"],
         "pip":
             "pip" if sys.version_info < (3,0) else "pip3"
         },
@@ -1776,6 +1865,25 @@ def init_configs():
                             
             },
 	"mysql":{
+                "connection":
+                    {
+                        "host":
+                                "localhost",
+                        "user":
+                                "root",
+                        "passwd":
+                                "",
+                        "port":
+                                3306,
+                        "db":
+                                "flask_man_db",
+                        "autocommit":
+                                True
+                    },
+                "database_connector":
+                        "pymysql"
+			},
+    "mariadb":{
                 "connection":
                     {
                         "host":
@@ -1929,9 +2037,9 @@ def set_sqlite_database(data):
  data["database"]["database_type"]="sqlite"
  write_configs(data)
 
-supported_dbs=["sqlite","mysql","postgresql","mssql","oracle"]
+supported_dbs=["sqlite","mysql","mariadb","postgresql","mssql","oracle"]
 supported_inits=["app","config","install"]
-supported_args=["init","db","upgrade","examples","add_template","delete_template","add_route","delete_route","firebase_apikey","firebase_bucket","firebase_configs","manager","pro","dev"]
+supported_args=["init","db","upgrade","examples","add_model","delete_model","add_template","delete_template","add_route","delete_route","firebase_apikey","firebase_bucket","firebase_configs","manager","pro","dev"]
 
 def help_msg(e):
   dbs=" or ".join(supported_dbs)
@@ -1976,6 +2084,14 @@ args:
 
         delete_route: remove the name from the "config.json"
                       file and delete the code from "routes.py"
+        
+        
+        add_model: add the name to the "config.json" file and 
+                   add necessary code to "models.py"
+        
+
+        delete_model: remove the name from the "config.json"
+                      file and delete the code from "models.py"
         
         
         firebase_apikey: set the firebase APIKey
@@ -2067,6 +2183,17 @@ Example 5 (database: Oracle SQL) :
 
 
 
+** Installing the requirements:
+
+
+Example:
+        
+        
+        flask_man init install
+
+
+
+
 ** Add a template to the project:
 
 
@@ -2085,6 +2212,28 @@ Example:
 
 
         flask_man delete_template "admin/login.html"
+
+
+
+
+** Add a model to the project:
+
+
+Example:
+
+
+        flask_man add_model "user"
+
+
+
+
+** Remove a model from the project:
+
+
+Example:
+
+
+        flask_man delete_model "user"
 
 
 
@@ -2213,6 +2362,14 @@ def get_templates_routes():
  return ''.join([ "<option value='{}'>{}</option>".format(x,x) for x in d["app"]["templates"]+d["app"]["routes"]])
 
 
+def get_models():
+ try:
+  d=read_configs()
+ except:
+  return ''
+ return ''.join([ "<option value='{}'>{}</option>".format(x,x) for x in d["app"]["models"]])
+
+
 def manager():
  app = Flask(__name__)
  
@@ -2224,29 +2381,50 @@ def manager():
  
  @app.route('/add',methods=["POST"])
  def add():
-  t=request.form["type"]
-  a=request.form["template"].split(',')
+  t=request.form.get("type",'')
+  a=request.form.get("template",'').split(',')
   if t=='template':
    for x in a:
-    add_template(x)
+    if x.strip()!='':
+     add_template(x)
   else:
    for x in a:
-    add_route(x)
+    if x.strip()!='':
+     add_route(x)
   return redirect('/')
   
   
  @app.route('/delete',methods=["POST"])
  def delete():
-  t=request.form["type"]
+  t=request.form.get("type",'')
+  a=request.form.get("template",'').split(',')
   if t=='template':
-   delete_template(request.form["template"])
+   if a.strip()!='':
+     delete_template(a)
   else:
-   delete_route(request.form["template"])
+   if a.strip()!='':
+     delete_route(a)
+  return redirect('/')
+
+ @app.route('/add_m',methods=["POST"])
+ def add_m():
+  a=request.form.get("model",'').split(',')
+  for x in a:
+   if x.strip()!='':
+    add_model(x)
+  return redirect('/')
+  
+  
+ @app.route('/delete_m',methods=["POST"])
+ def delete_m():
+  a=request.form.get('model','')
+  if a.strip()!='':
+   delete_model(request.form["model"])
   return redirect('/')
 
  @app.route('/db',methods=["POST"])
  def db():
-  t=request.form["db"]
+  t=request.form.get("db",'')
   if t in supported_dbs:
    os.system('flask_man db '+t)
   return redirect('/') 
@@ -2254,7 +2432,7 @@ def manager():
   
  @app.route('/go',methods=["POST"])
  def go():
-  t=request.form["go"]
+  t=request.form.get("go",'')
   if t in ["dev","pro"]:
    os.system('flask_man '+t)
   return redirect('/') 
@@ -2262,7 +2440,7 @@ def manager():
   
  @app.route('/create',methods=["POST"])
  def create():
-  t=request.form["db"]
+  t=request.form.get("db",'')
   if t in supported_dbs:
    if file_exists('config.json')==False:
     os.system('flask_man init config')
@@ -2310,6 +2488,7 @@ def manager():
  @app.route('/',methods=["GET"])
  def home():
   tr=get_templates_routes()
+  mo=get_models()
   return """
   <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
             "http://www.w3.org/TR/html4/strict.dtd">
@@ -2502,6 +2681,37 @@ html body {
       </div>
       </form>  
         
+      </center><br><br><br>   
+     <center><h3>Add Model</h3>
+     <br>   
+         <form enctype="multipart/form-data" id="myform" action = "/add_m" method = "POST" 
+         enctype = "multipart/form-data"><table id="form_" cellspacing="0" cellpadding="0">
+         <div class="input-group input-group-lg">
+         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Model(s):&nbsp;  &nbsp;</p></b> </td>
+         <td><input size="40" class="form-control"  value='' placeholder="users , posts , ..." id="template" type = "text" name = "model" required/>
+         </td><td><div class="col text-center"><input id="btn" type="submit" class="button btn-block btn-lg" value="Add" /></div></td></tr>
+      </table>
+      </div>
+      </form>  
+        
+      </center>
+<br><br> <br>       
+ 
+     <center><h3>Delete Model</h3>
+     <br>   
+         <form enctype="multipart/form-data" id="myform" action = "/delete_m" method = "POST" 
+         enctype = "multipart/form-data"><table id="form_" cellspacing="0" cellpadding="0">
+         <div class="input-group input-group-lg">
+         <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Model:&nbsp;  &nbsp;</p></b> </td>
+         <td><select class="form-control" name="model" id="template">
+         """+mo+"""
+         
+         </select></td>
+         </td><td><div class="col text-center"><input id="btn" type="submit" class="button btn-block btn-lg" value="Delete" /></div></td></tr>
+      </table>
+      </div>
+      </form>  
+        
       </center>
 <br><br>    <br>    
 <center><h3>Set Firebase APIKey</h3>
@@ -2597,6 +2807,12 @@ def main():
   sys.exit()
  if sys.argv[1]=="examples":
   examples_msg()
+  sys.exit()
+ if sys.argv[1]=="add_model":
+  add_model(sys.argv[2])
+  sys.exit()
+ if sys.argv[1]=="delete_model":
+  delete_model(sys.argv[2])
   sys.exit()
  if sys.argv[1]=="add_template":
   add_template(sys.argv[2])
