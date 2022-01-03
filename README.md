@@ -54,7 +54,7 @@ args:
               code and setup configurations, and to install required packages
 
 
-        db: to choose database type to use ( sqlite or mysql or postgresql or mssql or oracle )
+        db: to choose database type to use ( sqlite or mysql or mariadb or postgresql or mssql or oracle )
 
 
         add_template: create a template file with that path in the
@@ -75,6 +75,14 @@ args:
                       file and delete the code from "routes.py"
 
 
+        add_model: add the name to the "config.json" file and
+                   add necessary code to "models.py"
+
+
+        delete_model: remove the name from the "config.json"
+                      file and delete the code from "models.py"
+
+
         firebase_apikey: set the firebase APIKey
 
 
@@ -89,7 +97,6 @@ args:
 
 
         dev: set project to development mode
-
 </pre></div>
 # Manager
 To use flask_man's manager run the following commands ( suppose we will call the project "flask_proj" ) :
@@ -198,6 +205,17 @@ Example 5 (database: Oracle SQL) :
 
 
 
+** Installing the requirements:
+
+
+Example:
+
+
+        flask_man init install
+
+
+
+
 ** Add a template to the project:
 
 
@@ -216,6 +234,28 @@ Example:
 
 
         flask_man delete_template "admin/login.html"
+
+
+
+
+** Add a model to the project:
+
+
+Example:
+
+
+        flask_man add_model "user"
+
+
+
+
+** Remove a model from the project:
+
+
+Example:
+
+
+        flask_man delete_model "user"
 
 
 
