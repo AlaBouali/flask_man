@@ -8,6 +8,7 @@ Flask module to auto setup and manage the project and its configurations (app co
 <li>Create necessary codes, database, tables, files and folders when you initialize the project, leaving to you only editing the templates and adding some code to "template.py and "routes.py" when needed !</li>
 <li>Add/Delete routes/templates to/from the project's files and code in "template.py and "routes.py"</li>
 <li>Compatible with: SQLite, MySQL, MariaDB, PostgreSQL, Oracle SQL and MS SQL. You can switch between them with a single command any time.</li>
+<li>Create/Delete models from the project.</li>
 <li>Built-in functions ( in "utils.py" , "database.py" and "handlings.py") and decorators ( in "wrappers.py" ) to minimize the amount of code you write and maximize the security level of the projects.</li>
 <li>Have customizable configurations at "settings.py" which most of them are loaded from "config.json" ( created on the project's creation ) which is also updated when the configurations are changed, every time the application starts.</li>
 <li>Save files locally, filter them by their mimetypes and extensions, and serve them securily.</li>
