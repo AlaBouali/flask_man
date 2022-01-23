@@ -592,6 +592,12 @@ def create_app_script(configs):
  if r==[]:
   r=["/"]
  s1="""from routes import *
+
+
+#for recaptcha's HTML code : https://developers.google.com/recaptcha/docs/display
+
+
+
 """
  for x in r:
   if x[:1]!="/":
@@ -1585,6 +1591,10 @@ def download_this(path,root_dir=downloads_folder):
 """
  db_s=get_db_code(configs)
  script4="""from models import *
+
+
+
+# if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
 
 
 
