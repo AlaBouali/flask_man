@@ -324,6 +324,8 @@ def get_db_code(configs):
  return """from utils import *
 
 
+# if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
+
 
 import """+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+""" as database_connector
 
@@ -593,11 +595,6 @@ def create_app_script(configs):
   r=["/"]
  s1="""from routes import *
 
-
-#for recaptcha's HTML code : https://developers.google.com/recaptcha/docs/display
-
-
-
 """
  for x in r:
   if x[:1]!="/":
@@ -805,6 +802,8 @@ def safe_files(f):
 
 
 
+
+#for recaptcha's HTML code : https://developers.google.com/recaptcha/docs/display
 
 
 def valid_recaptcha(f):
@@ -1593,8 +1592,6 @@ def download_this(path,root_dir=downloads_folder):
  script4="""from models import *
 
 
-
-# if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
 
 
 
