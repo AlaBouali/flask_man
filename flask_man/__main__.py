@@ -826,7 +826,7 @@ def valid_recaptcha(f):
    return f(*args, **kwargs)
   else:
    remove_recaptcha_response(request)
-   return "Invalid recaptcha"+str(request.form),401
+   return "Invalid recaptcha",401
  return validate
 
 
