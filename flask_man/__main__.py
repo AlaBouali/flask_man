@@ -1,9 +1,18 @@
 #coding: utf-8
-import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,pyodbc,datetime,cx_Oracle,shutil,sanitizy
+import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,datetime,cx_Oracle,shutil,sanitizy
+
+
+# if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
+
+try:
+ import pyodbc
+except:
+ pyodbc=None
+
 
 from flask import request,Flask,redirect,send_file
 
-__version__="1.1.8"
+__version__="1.2.0"
 
 flask_man_version="flask_man/Python {}".format(__version__)
 
@@ -45,6 +54,8 @@ def install():
  if con!="sqlite3":
   r.append(con)
  f = open("requirements.txt", "w")
+ if  sys.version_info >(3,0):
+  r.append("vonage")
  for x in r:
   f.write('{}\n'.format(x))
  f.close()
@@ -114,10 +125,12 @@ def add_model(x):
   return 
  s="""
 
+
+
+
+
 class {}(flask_db.Model):
  pass
-
-
 """.format(x)
  r.append(x)
  configs["app"]["models"]=r
@@ -139,9 +152,9 @@ def delete_model(x):
  l=d.split("class")
  s=''
  for i in l:
-  if i.strip().startswith(x)==False:
+  if i.strip().startswith(x+"(")==False:
    if "from database import *" not in i:
-    s+="\n\n\nclass "+i.strip()
+    s+="\n\n\n\n\n\nclass "+i.strip()
    else:
     s+=i.strip()
  write_file("models.py",s.strip()+"\n\n")
@@ -158,15 +171,14 @@ def add_template(x):
  s="""
 
 
+
+
+
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files
 @endpoints_limiter.limit("3600/hour")
 def {}():
  data={{"session":General_Model(**session),"title":"{}"}}
  return render_template("{}",**data)
-
-
 """.format(x,x[1:].replace('.','_').replace("/","_"),x.split("/")[-1].split('.')[0].replace("_"," ").replace("/"," ").strip(),x[1:])
  r.append(x)
  configs["app"]["templates"]=r
@@ -187,12 +199,12 @@ def delete_template(x):
  write_configs(configs)
  delete_file("templates/"+x)
  d=read_file("templates.py")
- l=d.split("@app.route(")
+ l=d.split("@app.route('")
  s=''
  for i in l:
-  if x not in i:
+  if x+"'" not in i:
    if "from routes import *" not in i:
-    s+="\n\n\n@app.route("+i.strip()
+    s+="\n\n\n\n\n\n@app.route('"+i.strip()
    else:
     s+=i.strip()
  write_file("templates.py",s+"\n\n")
@@ -211,13 +223,12 @@ def add_route(x):
   if x[:1]!="/":
    x="/"+x
   r=configs["app"].get("routes",[])
+  if x in r:
+   return 
   a=re.findall(r'<[^>]*>',x)
   a+=re.findall(r'{[^>]*}',x)
   params=",".join([ i.replace('{','').replace('}','').replace('<','').replace('>','').split(':')[0] for i in a])
   s=''
-  su=""
-  if len(params.strip())>0:
-   su="\n@safe_uri"
   x="/"+"/".join([ i for i in x.split('/') if i.strip()!=""])
   if x[:1]!="/":
    x="/"+x
@@ -225,28 +236,26 @@ def add_route(x):
    s+="""
 
 
+
+
+
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return {}
-
-
 """.format("/","home_root",'',home_page)
   else:
    s+="""
 
 
+
+
+
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files{}
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return ""
-
-
-""".format(x.replace('.','_'),su,x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
+""".format(x.replace('.','_'),x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
 
   r.append(x)
   configs["app"]["routes"]=r
@@ -265,12 +274,12 @@ def delete_route(x):
  configs["app"]["routes"]=r
  write_configs(configs)
  d=read_file("routes.py")
- l=d.split("@app.route(")
+ l=d.split("@app.route('")
  s=''
  for i in l:
-  if x not in i:
+  if x+"'" not in i:
    if "from wrappers import *" not in i:
-    s+="\n\n\n@app.route("+i.strip()
+    s+="\n\n\n\n\n\n@app.route('"+i.strip()
    else:
     s+=i.strip()
  write_file("routes.py",s+"\n\n")
@@ -590,8 +599,6 @@ def create_app_script(configs):
   s1+="""
 
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files
 @endpoints_limiter.limit("3600/hour")
 def {}():
  data={{"session":General_Model(**session),"title":"{}"}}
@@ -608,8 +615,6 @@ def {}():
   a+=re.findall(r'{[^>]*}',x)
   params=",".join([ i.replace('{','').replace('}','').replace('<','').replace('>','').split(':')[0] for i in a])
   su=""
-  if len(params.strip())>0:
-   su="\n@safe_uri"
   x="/"+"/".join([ i for i in x.split('/') if i.strip()!=""])
   if x[:1]!="/":
    x="/"+x
@@ -617,8 +622,6 @@ def {}():
    s2+="""
 
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return {}
@@ -628,8 +631,6 @@ def {}({}):
    s2+="""
 
 @app.route('{}',methods=["GET","POST"])
-@safe_request
-@safe_files{}
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return ""
@@ -638,7 +639,7 @@ def {}({}):
  script1="""import flask,vonage,flask_admin,flask_sqlalchemy 
 from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
-from werkzeug.datastructures import  FileStorage
+from werkzeug.datastructures import  FileStorage,ImmutableMultiDict
 
 import requests as requests_local
 import flask_recaptcha 
@@ -647,6 +648,10 @@ import flask_limiter
 from flask_limiter.util import get_remote_address
 
 
+try:
+ import vonage
+except:
+ vonage=None
 
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -1045,11 +1050,8 @@ admin_indicator="admin"
 home_page_endpoint='"""+home_page_redirect+"""'
 
 
+
 dev_mode=True
-
-
-
-recaptcha_app =flask_recaptcha.ReCaptcha(app)
 
 
 if dev_mode==False:
@@ -1068,6 +1070,17 @@ else:
 
 
 app.config.update(**server_conf)
+
+
+recaptcha_app =flask_recaptcha.ReCaptcha(app)
+
+
+if server_conf['RECAPTCHA_SECRET_KEY']!=None:
+ server_conf.update({'RECAPTCHA_ENABLED': True})
+else:
+ server_conf.update({'RECAPTCHA_ENABLED': False})
+
+recaptcha_app.init_app(app)
 
 
 app.permanent_session_lifetime = datetime.timedelta(**session_timeout)
@@ -1099,6 +1112,16 @@ def delete_file(w):
   os.remove(w)
 
 
+
+def create_file(w):
+    direc,file=os.path.split(w)
+    try:
+        os.makedirs(direc, exist_ok=True)
+    except:
+        pass
+    with open(w ,"a+") as f:
+     pass
+    f.close()
 
 #https://gist.github.com/babldev/502364a3f7c9bafaa6db
 
@@ -1563,6 +1586,8 @@ def download_this(path,root_dir=downloads_folder):
  db_s=get_db_code(configs)
  script4="""from models import *
 
+
+
 #make sure everything is alright before doing anything
 
 
@@ -1575,8 +1600,14 @@ def sql_escape_url(endpoint, values):
 
 @app.before_request
 def before_request():
- if request.url.split('://')[0]=='http' and force_https==True:
+ if force_https==True:
+  if request.url.split('://')[0]=='http':
         url = request.url.replace('http://', 'https://', 1)
+        code = 301
+        return redirect(url, code=code)
+ else:
+  if request.url.split('://')[0]=='https':
+        url = request.url.replace('https://', 'http://', 1)
         code = 301
         return redirect(url, code=code)
 
@@ -1589,6 +1620,7 @@ def add_header(response):
     unset_headers(response.headers,unwanted_headers)
     dt=time.strftime('%Y-%b-%d')
     timestamp = time.strftime('[%Y-%b-%d %H:%M]')
+    create_file('logs/'+dt+'.log')
     handler = RotatingFileHandler('logs/'+dt+'.log', maxBytes=100000, backupCount=3)
     logger = logging.getLogger('tdm')
     logger.setLevel(logging.ERROR)
@@ -1620,12 +1652,60 @@ def return_json_response(data):
 
 
 
+#setup : sitemap.xml
+
+
+
+@app.route('/sitemap.xml',methods=["GET","POST"])
+@endpoints_limiter.limit("3600/hour")
+def sitemapxml():
+ a='''<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
+
+
+<url>
+</url>
+
+</urlset>'''
+ response = flask.make_response(a, 200)
+ response.mimetype = "text/xml"
+ return response
+
+
+
+
+
+
+
+#setup : robots.txt
+
+
+@app.route('/robots.txt',methods=["GET","POST"])
+@endpoints_limiter.limit("3600/hour")
+def robotstxt():
+ a= '''User-Agent: *
+Allow: /'''
+ response = flask.make_response(a, 200)
+ response.mimetype = "text/plain"
+ return response
+
+
+
+
+
+
+
 #automatically server any static file in the static folder
 
 @app.route('/static/<static_file>', methods = ['GET'])
 def static1__(static_file):
  path="{}/{}".format(statics_folder,static_file)
- if path.lower().endswith(sensitive_files):
+ if path.lower().endswith(tuple(sensitive_files)):
    return "Not Found",404
  if is_safe_path(path,root_dir=statics_folder)==True:
   if os.path.exists(path):
@@ -1637,7 +1717,7 @@ def static1__(static_file):
 @app.route('/static/<file_type>/<static_file>', methods = ['GET'])
 def static2__(file_type,static_file):
  path="{}/{}/{}".format(statics_folder,file_type,static_file)
- if path.lower().endswith(sensitive_files):
+ if path.lower().endswith(tuple(sensitive_files)):
    return "Not Found",404
  if is_safe_path(path,root_dir=statics_folder)==True:
   if os.path.exists(path):
@@ -1721,6 +1801,7 @@ admin_app = flask_admin.Admin(app, name="Flask's admin page", template_mode='boo
 
 '''
 """)
+ write_file('runtime.txt','python-'+sys.version.split(" ")[0])
  os.makedirs("templates", exist_ok=True)
  os.makedirs("logs", exist_ok=True)
  if configs["app"].get('uploads',None)!=None:
@@ -1847,7 +1928,7 @@ def init_configs():
         "models":
             [],
         "requirements":
-            ["flask","sanitizy","flask-limiter","flask-admin","flask-debugtoolbar","firebase-admin","google-cloud-storage","Flask-SQLAlchemy","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2","psycopg2","pyodbc","cx_Oracle"],
+            ["flask","sanitizy","flask-limiter","vonage","flask-admin","flask-debugtoolbar","git+https://github.com/ozgur/python-firebase","firebase-admin","google-cloud-storage","Flask-SQLAlchemy","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2"],
         "pip":
             "pip" if sys.version_info < (3,0) else "pip3"
         },
