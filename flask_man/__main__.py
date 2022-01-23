@@ -327,6 +327,16 @@ def get_db_code(configs):
 # if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
 
 
+# if you can't install "psycopg2" on linux, try: https://stackoverflow.com/questions/5420789/how-to-install-psycopg2-with-pip-on-python
+
+
+# if you can't install "cx_Oracle" on linux, try: https://blogs.oracle.com/linux/post/installing-cx_oracle-and-oracle-instant-client-via-oracle-linux-yum-server
+
+
+#in case of "cx_Oracle" connection error: https://stackoverflow.com/questions/56119490/cx-oracle-error-dpi-1047-cannot-locate-a-64-bit-oracle-client-library
+
+
+
 import """+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+""" as database_connector
 
 
@@ -367,9 +377,6 @@ elif database_type=='oracle':
 flask_db=flask_sqlalchemy.SQLAlchemy(app)
 
 
-
-
-#in case of cx_Oracle connection error: https://stackoverflow.com/questions/56119490/cx-oracle-error-dpi-1047-cannot-locate-a-64-bit-oracle-client-library
 
 
 def get_database_connection():
@@ -639,7 +646,7 @@ def {}({}):
  return ""
 
 """.format(x.replace('.','_'),su,x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
- script1="""import flask,vonage,flask_admin,flask_sqlalchemy 
+ script1="""import flask,flask_admin,flask_sqlalchemy 
 from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage,ImmutableMultiDict
@@ -803,16 +810,23 @@ def safe_files(f):
 
 
 
-#for recaptcha's HTML code : https://developers.google.com/recaptcha/docs/display
+
+# for recaptcha's HTML code : https://developers.google.com/recaptcha/docs/display
+
+# https://www.google.com/recaptcha/
+
+# <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 
 def valid_recaptcha(f):
  @functools.wraps(f)
  def validate(*args, **kwargs):
   if recaptcha_app.verify():
+   remove_recaptcha_response(request)
    return f(*args, **kwargs)
   else:
-   return "Invalid recaptcha",401
+   remove_recaptcha_response(request)
+   return "Invalid recaptcha"+str(request.form),401
  return validate
 
 
@@ -1109,6 +1123,25 @@ class General_Model:
 
  def __init__(self,**kwargs):
   self.__dict__.update(kwargs)
+
+
+
+
+def remove_recaptcha_response(obj):
+ d={}
+ for x in obj.form:
+  if x!='g-recaptcha-response':
+   d.update({x:obj.form[x]})
+ obj.form=ImmutableMultiDict(d)
+ d={}
+ for x in obj.args:
+  if x!='g-recaptcha-response':
+   d.update({x:obj.args[x]})
+ obj.args=ImmutableMultiDict(d)
+ for x in obj.files:
+  if x!='g-recaptcha-response':
+   d.update({x:obj.files[x]})
+ obj.files=ImmutableMultiDict(d)
 
 
 
@@ -1625,14 +1658,17 @@ def before_request():
 def add_header(response):
     set_headers(response.headers,additional_headers)
     unset_headers(response.headers,unwanted_headers)
-    dt=time.strftime('%Y-%b-%d')
-    timestamp = time.strftime('[%Y-%b-%d %H:%M]')
-    create_file('logs/'+dt+'.log')
-    handler = RotatingFileHandler('logs/'+dt+'.log', maxBytes=100000, backupCount=3)
-    logger = logging.getLogger('tdm')
-    logger.setLevel(logging.ERROR)
-    logger.addHandler(handler)
-    logger.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)    
+    try:
+     dt=time.strftime('%Y-%b-%d')
+     timestamp = time.strftime('[%Y-%b-%d %H:%M:%S]')
+     #create_file('logs/'+dt+'.log')
+     handler = RotatingFileHandler('logs/'+dt+'.log', maxBytes=100000, backupCount=3)
+     logger = logging.getLogger('tdm')
+     logger.setLevel(logging.ERROR)
+     logger.addHandler(handler)
+     logger.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)    
+    except:
+     pass
     return response
     
 
