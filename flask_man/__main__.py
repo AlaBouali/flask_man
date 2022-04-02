@@ -1,129 +1,142 @@
-#coding: utf-8
-import json,pymysql,random,time,sqlite3,sys,re,os,pip,psycopg2,datetime,cx_Oracle,shutil,sanitizy
+# coding: utf-8
+import json, pymysql, random, time, sqlite3, sys, re, os, pip, psycopg2, datetime, cx_Oracle, shutil, sanitizy
 
 
 # if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
 
 try:
- import pyodbc
+    import pyodbc
 except:
- pyodbc=None
+    pyodbc = None
 
 
-from flask import request,Flask,redirect,send_file
+from flask import request, Flask, redirect, send_file
 
-__version__="1.2.0"
+__version__ = "1.2.0"
 
-flask_man_version="flask_man/Python {}".format(__version__)
+flask_man_version = "flask_man/Python {}".format(__version__)
 
 
 def bind_path(*args):
- seperate='\\' if (sys.platform.lower() == "win32") or( sys.platform.lower() == "win64") else '/'
- return seperate.join(args)
+    seperate = (
+        "\\"
+        if (sys.platform.lower() == "win32") or (sys.platform.lower() == "win64")
+        else "/"
+    )
+    return seperate.join(args)
+
 
 def write_configs(d):
- with open('config.json', 'w') as f:
-     json.dump(d, f, indent=4)
- f.close()
+    with open("config.json", "w") as f:
+        json.dump(d, f, indent=4)
+    f.close()
 
 
-def write_json(fi,d):
- with open(fi, 'w') as f:
-     json.dump(d, f, indent=4)
- f.close()
+def write_json(fi, d):
+    with open(fi, "w") as f:
+        json.dump(d, f, indent=4)
+    f.close()
+
 
 def read_file(fl):
- with open(fl,'r') as f:
-    content = f.read()
-    f.close()
- return content
+    with open(fl, "r") as f:
+        content = f.read()
+        f.close()
+    return content
+
 
 def delete_file(w):
- if os.path.exists(w):
-  os.remove(w)
+    if os.path.exists(w):
+        os.remove(w)
 
-def add_to_file(fi,s):
- f = open(fi,'a+')
- f.write(s)
- f.close()
+
+def add_to_file(fi, s):
+    f = open(fi, "a+")
+    f.write(s)
+    f.close()
+
 
 def install():
- configs=read_configs()
- r=configs["app"].get("requirements",[])
- con=configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')
- if con!="sqlite3":
-  r.append(con)
- f = open("requirements.txt", "w")
- if  sys.version_info >(3,0):
-  r.append("vonage")
- for x in r:
-  f.write('{}\n'.format(x))
- f.close()
- os.system(configs["app"].get("pip","pip3")+" install -r requirements.txt -U  --user")
-
+    configs = read_configs()
+    r = configs["app"].get("requirements", [])
+    con = configs[configs["database"].get("database_type", "sqlite")].get(
+        "database_connector", "sqlite3"
+    )
+    if con != "sqlite3":
+        r.append(con)
+    f = open("requirements.txt", "w")
+    if sys.version_info > (3, 0):
+        r.append("vonage")
+    for x in r:
+        f.write("{}\n".format(x))
+    f.close()
+    os.system(
+        configs["app"].get("pip", "pip3") + " install -r requirements.txt -U  --user"
+    )
 
 
 def set_firebase_apikey(s):
- d=read_file("settings.py")
- l=[ x for x in d.split('\n')]
- c=[]
- for x in l:
-  if x.startswith('firebase_apikey=')==True:
-   x="firebase_apikey='{}'".format(s)
-  c.append(x)
- write_file("settings.py",'\n'.join(c))
- configs=read_configs()
- configs['app']['firebase_apikey']=s
- write_configs(configs)
+    d = read_file("settings.py")
+    l = [x for x in d.split("\n")]
+    c = []
+    for x in l:
+        if x.startswith("firebase_apikey=") == True:
+            x = "firebase_apikey='{}'".format(s)
+        c.append(x)
+    write_file("settings.py", "\n".join(c))
+    configs = read_configs()
+    configs["app"]["firebase_apikey"] = s
+    write_configs(configs)
 
 
 def set_firebase_bucket(s):
- d=read_file("settings.py")
- l=[ x for x in d.split('\n')]
- c=[]
- for x in l:
-  if x.startswith('firebase_storage_bucket=')==True:
-   x="firebase_storage_bucket='{}'".format(s)
-  c.append(x)
- write_file("settings.py",'\n'.join(c))
- configs=read_configs()
- configs['app']['firebase_bucket']=s
- write_configs(configs)
+    d = read_file("settings.py")
+    l = [x for x in d.split("\n")]
+    c = []
+    for x in l:
+        if x.startswith("firebase_storage_bucket=") == True:
+            x = "firebase_storage_bucket='{}'".format(s)
+        c.append(x)
+    write_file("settings.py", "\n".join(c))
+    configs = read_configs()
+    configs["app"]["firebase_bucket"] = s
+    write_configs(configs)
 
 
 def go_pro():
- d=read_file("settings.py")
- l=[ x for x in d.split('\n')]
- c=[]
- for x in l:
-  if x.startswith('dev_mode=')==True:
-   x="dev_mode=False"
-  c.append(x)
- write_file("settings.py",'\n'.join(c))
+    d = read_file("settings.py")
+    l = [x for x in d.split("\n")]
+    c = []
+    for x in l:
+        if x.startswith("dev_mode=") == True:
+            x = "dev_mode=False"
+        c.append(x)
+    write_file("settings.py", "\n".join(c))
+
 
 def go_dev():
- d=read_file("settings.py")
- l=[ x for x in d.split('\n')]
- c=[]
- for x in l:
-  if x.startswith('dev_mode=')==True:
-   x="dev_mode=True"
-  c.append(x)
- write_file("settings.py",'\n'.join(c))
+    d = read_file("settings.py")
+    l = [x for x in d.split("\n")]
+    c = []
+    for x in l:
+        if x.startswith("dev_mode=") == True:
+            x = "dev_mode=True"
+        c.append(x)
+    write_file("settings.py", "\n".join(c))
+
 
 def write_firebase_configs_(d):
- configs=read_configs()
- shutil.copyfile(d,configs['app']["firebase_creds_file"])
-
+    configs = read_configs()
+    shutil.copyfile(d, configs["app"]["firebase_creds_file"])
 
 
 def add_model(x):
- x=x.capitalize()
- configs=read_configs()
- r=configs["app"].get("models",[])
- if x in r:
-  return 
- s="""
+    x = x.capitalize()
+    configs = read_configs()
+    r = configs["app"].get("models", [])
+    if x in r:
+        return
+    s = """
 
 
 
@@ -131,44 +144,44 @@ def add_model(x):
 
 class {}(flask_db.Model):
  pass
-""".format(x)
- r.append(x)
- configs["app"]["models"]=r
- write_configs(configs)
- add_to_file("models.py",s)
-
+""".format(
+        x
+    )
+    r.append(x)
+    configs["app"]["models"] = r
+    write_configs(configs)
+    add_to_file("models.py", s)
 
 
 def delete_model(x):
- configs=read_configs()
- x=x.capitalize()
- r=configs["app"].get("models",[])
- if x not in r:
-  return 
- r.remove(x)
- configs["app"]["models"]=r
- write_configs(configs)
- d=read_file("models.py")
- l=d.split("class")
- s=''
- for i in l:
-  if i.strip().startswith(x+"(")==False:
-   if "from database import *" not in i:
-    s+="\n\n\n\n\n\nclass "+i.strip()
-   else:
-    s+=i.strip()
- write_file("models.py",s.strip()+"\n\n")
-
+    configs = read_configs()
+    x = x.capitalize()
+    r = configs["app"].get("models", [])
+    if x not in r:
+        return
+    r.remove(x)
+    configs["app"]["models"] = r
+    write_configs(configs)
+    d = read_file("models.py")
+    l = d.split("class")
+    s = ""
+    for i in l:
+        if i.strip().startswith(x + "(") == False:
+            if "from database import *" not in i:
+                s += "\n\n\n\n\n\nclass " + i.strip()
+            else:
+                s += i.strip()
+    write_file("models.py", s.strip() + "\n\n")
 
 
 def add_template(x):
- if x[:1]!="/":
-   x="/"+x
- configs=read_configs()
- r=configs["app"].get("templates",[])
- if x in r:
-  return 
- s="""
+    if x[:1] != "/":
+        x = "/" + x
+    configs = read_configs()
+    r = configs["app"].get("templates", [])
+    if x in r:
+        return
+    s = """
 
 
 
@@ -179,61 +192,73 @@ def add_template(x):
 def {}():
  data={{"session":General_Model(**session),"title":"{}"}}
  return render_template("{}",**data)
-""".format(x,x[1:].replace('.','_').replace("/","_"),x.split("/")[-1].split('.')[0].replace("_"," ").replace("/"," ").strip(),x[1:])
- r.append(x)
- configs["app"]["templates"]=r
- write_configs(configs)
- add_to_file("templates.py",s)
- create_file("templates"+x)
+""".format(
+        x,
+        x[1:].replace(".", "_").replace("/", "_"),
+        x.split("/")[-1].split(".")[0].replace("_", " ").replace("/", " ").strip(),
+        x[1:],
+    )
+    r.append(x)
+    configs["app"]["templates"] = r
+    write_configs(configs)
+    add_to_file("templates.py", s)
+    create_file("templates" + x)
 
 
 def delete_template(x):
- if x[:1]!="/":
-   x="/"+x
- configs=read_configs()
- r=configs["app"].get("templates",[])
- if x not in r:
-  return 
- r.remove(x)
- configs["app"]["templates"]=r
- write_configs(configs)
- delete_file("templates/"+x)
- d=read_file("templates.py")
- l=d.split("@app.route('")
- s=''
- for i in l:
-  if x+"'" not in i:
-   if "from routes import *" not in i:
-    s+="\n\n\n\n\n\n@app.route('"+i.strip()
-   else:
-    s+=i.strip()
- write_file("templates.py",s+"\n\n")
-
-
+    if x[:1] != "/":
+        x = "/" + x
+    configs = read_configs()
+    r = configs["app"].get("templates", [])
+    if x not in r:
+        return
+    r.remove(x)
+    configs["app"]["templates"] = r
+    write_configs(configs)
+    delete_file("templates/" + x)
+    d = read_file("templates.py")
+    l = d.split("@app.route('")
+    s = ""
+    for i in l:
+        if x + "'" not in i:
+            if "from routes import *" not in i:
+                s += "\n\n\n\n\n\n@app.route('" + i.strip()
+            else:
+                s += i.strip()
+    write_file("templates.py", s + "\n\n")
 
 
 def add_route(x):
-  configs=read_configs()
-  home_page_redirect="/"
-  if configs["app"].get('templates',[])!=[]:
-   home_page_redirect=configs["app"]['templates'][0]
-  home_page='""'
-  if home_page_redirect!="/":
-   home_page="render_template('"+home_page_redirect+"')"
-  if x[:1]!="/":
-   x="/"+x
-  r=configs["app"].get("routes",[])
-  if x in r:
-   return 
-  a=re.findall(r'<[^>]*>',x)
-  a+=re.findall(r'{[^>]*}',x)
-  params=",".join([ i.replace('{','').replace('}','').replace('<','').replace('>','').split(':')[0] for i in a])
-  s=''
-  x="/"+"/".join([ i for i in x.split('/') if i.strip()!=""])
-  if x[:1]!="/":
-   x="/"+x
-  if x=="/":
-   s+="""
+    configs = read_configs()
+    home_page_redirect = "/"
+    if configs["app"].get("templates", []) != []:
+        home_page_redirect = configs["app"]["templates"][0]
+    home_page = '""'
+    if home_page_redirect != "/":
+        home_page = "render_template('" + home_page_redirect + "')"
+    if x[:1] != "/":
+        x = "/" + x
+    r = configs["app"].get("routes", [])
+    if x in r:
+        return
+    a = re.findall(r"<[^>]*>", x)
+    a += re.findall(r"{[^>]*}", x)
+    params = ",".join(
+        [
+            i.replace("{", "")
+            .replace("}", "")
+            .replace("<", "")
+            .replace(">", "")
+            .split(":")[0]
+            for i in a
+        ]
+    )
+    s = ""
+    x = "/" + "/".join([i for i in x.split("/") if i.strip() != ""])
+    if x[:1] != "/":
+        x = "/" + x
+    if x == "/":
+        s += """
 
 
 
@@ -243,9 +268,11 @@ def add_route(x):
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return {}
-""".format("/","home_root",'',home_page)
-  else:
-   s+="""
+""".format(
+            "/", "home_root", "", home_page
+        )
+    else:
+        s += """
 
 
 
@@ -255,73 +282,84 @@ def {}({}):
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return ""
-""".format(x.replace('.','_'),x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
+""".format(
+            x.replace(".", "_"),
+            x[1:]
+            .replace("{", "")
+            .replace("}", "_")
+            .replace("/", "_")
+            .replace("<", "")
+            .replace(">", "_")
+            .replace(":", "_")
+            .replace(".", ""),
+            params,
+        )
 
-  r.append(x)
-  configs["app"]["routes"]=r
-  write_configs(configs)
-  add_to_file("routes.py",s)
+    r.append(x)
+    configs["app"]["routes"] = r
+    write_configs(configs)
+    add_to_file("routes.py", s)
 
 
 def delete_route(x):
- if x[:1]!="/":
-   x="/"+x
- configs=read_configs()
- r=configs["app"].get("routes",[])
- if x not in r:
-  return 
- r.remove(x)
- configs["app"]["routes"]=r
- write_configs(configs)
- d=read_file("routes.py")
- l=d.split("@app.route('")
- s=''
- for i in l:
-  if x+"'" not in i:
-   if "from wrappers import *" not in i:
-    s+="\n\n\n\n\n\n@app.route('"+i.strip()
-   else:
-    s+=i.strip()
- write_file("routes.py",s+"\n\n")
-
-
-
+    if x[:1] != "/":
+        x = "/" + x
+    configs = read_configs()
+    r = configs["app"].get("routes", [])
+    if x not in r:
+        return
+    r.remove(x)
+    configs["app"]["routes"] = r
+    write_configs(configs)
+    d = read_file("routes.py")
+    l = d.split("@app.route('")
+    s = ""
+    for i in l:
+        if x + "'" not in i:
+            if "from wrappers import *" not in i:
+                s += "\n\n\n\n\n\n@app.route('" + i.strip()
+            else:
+                s += i.strip()
+    write_file("routes.py", s + "\n\n")
 
 
 def upgrade():
- p="pip" if sys.version_info < (3,0) else "pip3"
- os.system(p+" install flask_man -U   --user")
+    p = "pip" if sys.version_info < (3, 0) else "pip3"
+    os.system(p + " install flask_man -U   --user")
 
 
 def file_exists(path):
- return os.path.exists(path)
- 
+    return os.path.exists(path)
+
 
 def create_file(w):
-    direc,file=os.path.split(w)
+    direc, file = os.path.split(w)
     try:
         os.makedirs(direc, exist_ok=True)
     except:
         pass
-    with open(w ,"a+") as f:
-     pass
+    with open(w, "a+") as f:
+        pass
     f.close()
 
-def write_file(f,s):
- create_file(f)
- f = open(f, "w")
- f.write(s)
- f.close()
 
+def write_file(f, s):
+    create_file(f)
+    f = open(f, "w")
+    f.write(s)
+    f.close()
 
 
 def get_db_code(configs):
- db_con=configs[configs["database"].get("database_type",'sqlite')].get("connection",{})
- if type(db_con)==str:
-  db_con=str(json.dumps(db_con))
- else:
-  db_con=str(db_con)
- return """from utils import *
+    db_con = configs[configs["database"].get("database_type", "sqlite")].get(
+        "connection", {}
+    )
+    if type(db_con) == str:
+        db_con = str(json.dumps(db_con))
+    else:
+        db_con = str(db_con)
+    return (
+        """from utils import *
 
 
 # if you can't install "pyodbc" on linux, try: https://stackoverflow.com/questions/2960339/unable-to-install-pyodbc-on-linux
@@ -337,17 +375,29 @@ def get_db_code(configs):
 
 
 
-import """+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+""" as database_connector
+import """
+        + configs[configs["database"].get("database_type", "sqlite")].get(
+            "database_connector", "sqlite3"
+        )
+        + """ as database_connector
 
 
-db_connector='"""+configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')+"""'
+db_connector='"""
+        + configs[configs["database"].get("database_type", "sqlite")].get(
+            "database_connector", "sqlite3"
+        )
+        + """'
 
-database_credentials="""+db_con+"""
+database_credentials="""
+        + db_con
+        + """
 
 
 
 
-database_type='"""+configs["database"].get("database_type",'sqlite')+"""'
+database_type='"""
+        + configs["database"].get("database_type", "sqlite")
+        + """'
 
 
 #https://overiq.com/flask-101/database-modelling-in-flask/
@@ -493,120 +543,135 @@ def database_fetch_all(sql,*args):
  close_object(c)
  return r
 """
-
+    )
 
 
 def random_string(s):
- return ''.join([random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890') for x in range(s)])
-
-def create_mysql_db(d,connector):
-  if type(d)==str:
-   di="%s"%d
-   for x in di.split():
-    if "dbname=" in x.lower():
-     d.replace(x,"dbname=''")
-   c=connector.connect(di)
-   if connector==psycopg2:
-    c.set_session(autocommit=True)
-   else:
-    c.autocommit=True
-   cu=c.cursor()
-   if connector==psycopg2:
-    a=d.split()
-    db=""
-    for x in a:
-     if "dbname=" in x.lower():
-      db=x.split("=")[1]
-    a=d.split(';')
-   elif connector==pyodbc:
-    db=""
-    for x in a:
-     if "database=" in x.lower() :
-      db=x.split("=")[1]
-   try:
-    cu.execute("CREATE DATABASE IF NOT EXISTS "+db)
-   except:
-    pass
-  else:
-   di=d.copy()
-   for x in ['db','database','dbname','DATABASE']:
-    try:
-     di.pop(x)
-    except:
-     pass
-   c=connector.connect(**di)
-   cu=c.cursor()
-   cu.execute("CREATE DATABASE IF NOT EXISTS "+d["db"])
-   cu.close()
-   c.close()
+    return "".join(
+        [
+            random.choice(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+            )
+            for x in range(s)
+        ]
+    )
 
 
-def get_connection(c,connector):
- if type(c)==str:
-   d=connector.connect(c)
-   if connector==psycopg2:
-    d.set_session(autocommit=True)
-   else:
-    d.autocommit=True
-   return d
- if connector==pymysql:
-  return connector.connect(**c)
- con=connector.connect(**c)
- con.autocommit=True
- return con
+def create_mysql_db(d, connector):
+    if type(d) == str:
+        di = "%s" % d
+        for x in di.split():
+            if "dbname=" in x.lower():
+                d.replace(x, "dbname=''")
+        c = connector.connect(di)
+        if connector == psycopg2:
+            c.set_session(autocommit=True)
+        else:
+            c.autocommit = True
+        cu = c.cursor()
+        if connector == psycopg2:
+            a = d.split()
+            db = ""
+            for x in a:
+                if "dbname=" in x.lower():
+                    db = x.split("=")[1]
+            a = d.split(";")
+        elif connector == pyodbc:
+            db = ""
+            for x in a:
+                if "database=" in x.lower():
+                    db = x.split("=")[1]
+        try:
+            cu.execute("CREATE DATABASE IF NOT EXISTS " + db)
+        except:
+            pass
+    else:
+        di = d.copy()
+        for x in ["db", "database", "dbname", "DATABASE"]:
+            try:
+                di.pop(x)
+            except:
+                pass
+        c = connector.connect(**di)
+        cu = c.cursor()
+        cu.execute("CREATE DATABASE IF NOT EXISTS " + d["db"])
+        cu.close()
+        c.close()
+
+
+def get_connection(c, connector):
+    if type(c) == str:
+        d = connector.connect(c)
+        if connector == psycopg2:
+            d.set_session(autocommit=True)
+        else:
+            d.autocommit = True
+        return d
+    if connector == pymysql:
+        return connector.connect(**c)
+    con = connector.connect(**c)
+    con.autocommit = True
+    return con
+
 
 def get_sqlite_connection(c):
- while True:
-  try:
-   conn = sqlite3.connect(c["file"],isolation_level=c['isolation_level'])
-   if conn!=None:
-    return conn
-  except:
-   time.sleep(0.1)
+    while True:
+        try:
+            conn = sqlite3.connect(c["file"], isolation_level=c["isolation_level"])
+            if conn != None:
+                return conn
+        except:
+            time.sleep(0.1)
 
 
 def get_cursor(c):
- return c.cursor()
+    return c.cursor()
+
 
 def close_object(c):
- c.close()
+    c.close()
+
 
 def write_firebase_configs(d):
- with open('config.json', 'w') as f:
-     json.dump(d, f, indent=4)
- f.close()
+    with open("config.json", "w") as f:
+        json.dump(d, f, indent=4)
+    f.close()
+
 
 def read_configs():
- f = open('config.json')
- d = json.load(f)
- f.close()
- return d
+    f = open("config.json")
+    d = json.load(f)
+    f.close()
+    return d
+
 
 def create_app_script(configs):
- home_page_redirect="/"
- if configs["app"].get('templates',[])!=[]:
-  home_page_redirect=configs["app"]['templates'][0]
- home_page='""'
- if home_page_redirect!="/":
-  home_page="render_template('"+home_page_redirect+"')"
- r=configs["app"].get("requirements",[])
- con=configs[configs["database"].get("database_type",'sqlite')].get("database_connector",'sqlite3')
- if con!="sqlite3":
-  r.append(con)
- f = open("requirements.txt", "w")
- for x in r:
-  f.write('{}\n'.format(x))
- f.close()
- r=list(dict.fromkeys(configs["app"].get('templates',[])))
- if r==[]:
-  r=["/"]
- s1="""from routes import *
+    home_page_redirect = "/"
+    if configs["app"].get("templates", []) != []:
+        home_page_redirect = configs["app"]["templates"][0]
+    home_page = '""'
+    if home_page_redirect != "/":
+        home_page = "render_template('" + home_page_redirect + "')"
+    r = configs["app"].get("requirements", [])
+    con = configs[configs["database"].get("database_type", "sqlite")].get(
+        "database_connector", "sqlite3"
+    )
+    if con != "sqlite3":
+        r.append(con)
+    f = open("requirements.txt", "w")
+    for x in r:
+        f.write("{}\n".format(x))
+    f.close()
+    r = list(dict.fromkeys(configs["app"].get("templates", [])))
+    if r == []:
+        r = ["/"]
+    s1 = """from routes import *
 
 """
- for x in r:
-  if x[:1]!="/":
-   x="/"+x
-  s1+="""
+    for x in r:
+        if x[:1] != "/":
+            x = "/" + x
+        s1 += """
 
 @app.route('{}',methods=["GET","POST"])
 @endpoints_limiter.limit("3600/hour")
@@ -614,39 +679,67 @@ def {}():
  data={{"session":General_Model(**session),"title":"{}"}}
  return render_template("{}",**data)
 
-""".format(x,x[1:].replace('.','_').replace("/","_"),x.split("/")[-1].split('.')[0].replace("_"," ").replace("/"," ").strip(),x[1:])
- r=list(dict.fromkeys(configs["app"].get("routes",[])))
- if r==[]:
-  r=["/"]
- s2="""from wrappers import *
+""".format(
+            x,
+            x[1:].replace(".", "_").replace("/", "_"),
+            x.split("/")[-1].split(".")[0].replace("_", " ").replace("/", " ").strip(),
+            x[1:],
+        )
+    r = list(dict.fromkeys(configs["app"].get("routes", [])))
+    if r == []:
+        r = ["/"]
+    s2 = """from wrappers import *
 """
- for x in r:
-  a=re.findall(r'<[^>]*>',x)
-  a+=re.findall(r'{[^>]*}',x)
-  params=",".join([ i.replace('{','').replace('}','').replace('<','').replace('>','').split(':')[0] for i in a])
-  su=""
-  x="/"+"/".join([ i for i in x.split('/') if i.strip()!=""])
-  if x[:1]!="/":
-   x="/"+x
-  if x=="/":
-   s2+="""
+    for x in r:
+        a = re.findall(r"<[^>]*>", x)
+        a += re.findall(r"{[^>]*}", x)
+        params = ",".join(
+            [
+                i.replace("{", "")
+                .replace("}", "")
+                .replace("<", "")
+                .replace(">", "")
+                .split(":")[0]
+                for i in a
+            ]
+        )
+        su = ""
+        x = "/" + "/".join([i for i in x.split("/") if i.strip() != ""])
+        if x[:1] != "/":
+            x = "/" + x
+        if x == "/":
+            s2 += """
 
 @app.route('{}',methods=["GET","POST"])
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return {}
 
-""".format("/","home_root",'',home_page)
-  else:
-   s2+="""
+""".format(
+                "/", "home_root", "", home_page
+            )
+        else:
+            s2 += """
 
 @app.route('{}',methods=["GET","POST"])
 @endpoints_limiter.limit("3600/hour")
 def {}({}):
  return ""
 
-""".format(x.replace('.','_'),su,x[1:].replace('{','').replace('}','_').replace('/','_').replace('<','').replace('>','_').replace(':','_').replace('.',''),params)
- script1="""import flask,flask_admin,flask_sqlalchemy 
+""".format(
+                x.replace(".", "_"),
+                su,
+                x[1:]
+                .replace("{", "")
+                .replace("}", "_")
+                .replace("/", "_")
+                .replace("<", "")
+                .replace(">", "_")
+                .replace(":", "_")
+                .replace(".", ""),
+                params,
+            )
+    script1 = """import flask,flask_admin,flask_sqlalchemy 
 from flask import Flask, request,send_file,Response,redirect,session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage,ImmutableMultiDict
@@ -696,7 +789,7 @@ from flask.sessions import TaggedJSONSerializer
 from google.cloud import storage
 """
 
- wrappers="""from handlings import *
+    wrappers = """from handlings import *
 
 
 
@@ -879,7 +972,8 @@ def render_template(t,**kwargs):
   print(e)
   return 'Template not found'
 """
- script2="""from imports import *
+    script2 = (
+        """from imports import *
 
 
 #Don't touch what's below unless you know what you are doing :)
@@ -891,13 +985,19 @@ def render_template(t,**kwargs):
 #https://thepoints.medium.com/upload-data-to-firebase-cloud-firestore-with-10-line-of-python-code-1877690a55c6
 
 
-firebase_creds_file='"""+configs['app'].get("firebase_creds_file",'firebase_creds.json')+"""'
+firebase_creds_file='"""
+        + configs["app"].get("firebase_creds_file", "firebase_creds.json")
+        + """'
 
 
-firebase_apikey='"""+str(configs['app'].get("firebase_apikey",None))+"""'
+firebase_apikey='"""
+        + str(configs["app"].get("firebase_apikey", None))
+        + """'
 
 
-firebase_storage_bucket='"""+configs['app'].get("firebase_bucket",None)+"""'
+firebase_storage_bucket='"""
+        + configs["app"].get("firebase_bucket", None)
+        + """'
 
 
 firebase_creds=None
@@ -922,20 +1022,30 @@ authorization_header='Auth-Token'
 endpoints_limiter=flask_limiter.Limiter(app, key_func=get_remote_address, default_limits=[])
 
 
-server_signature='"""+flask_man_version+"""'
+server_signature='"""
+        + flask_man_version
+        + """'
 
 
-accepted_referer_domains="""+str(configs["app"]["accepted_referer_domains"])+"""
+accepted_referer_domains="""
+        + str(configs["app"]["accepted_referer_domains"])
+        + """
 
-accepted_origin_domains="""+str(configs["app"]["accepted_origin_domains"])+"""
+accepted_origin_domains="""
+        + str(configs["app"]["accepted_origin_domains"])
+        + """
 
 #global important variables
 
 
-allowed_file_extensions="""+str(configs["app"]["allowed_file_extensions"])+"""
+allowed_file_extensions="""
+        + str(configs["app"]["allowed_file_extensions"])
+        + """
 
 
-allowed_mimetypes_="""+str(configs["app"]["allowed_mimetypes"])+"""
+allowed_mimetypes_="""
+        + str(configs["app"]["allowed_mimetypes"])
+        + """
 
 
 
@@ -943,7 +1053,9 @@ permanent_session=True
 
 
 
-vonage_creds="""+str(configs["app"]["vonage_creds"])+"""
+vonage_creds="""
+        + str(configs["app"]["vonage_creds"])
+        + """
 
 
 
@@ -1002,13 +1114,19 @@ if whitelist_external_sources==True:
 unwanted_headers=[]
 
 
-app_conf="""+str(configs["app"]["run"])+"""
+app_conf="""
+        + str(configs["app"]["run"])
+        + """
 
 
-server_conf="""+str(configs["app"]["config"])+"""
+server_conf="""
+        + str(configs["app"]["config"])
+        + """
 
 
-session_timeout="""+str(configs["app"]["session_timeout"])+"""
+session_timeout="""
+        + str(configs["app"]["session_timeout"])
+        + """
 
 
 force_https=True if app_conf['ssl_context']!=None else False
@@ -1028,7 +1146,9 @@ downloads_folder="uploads"
 
 #sensitive files that shouldn't be accessed by the user (downloaded for example)
 
-sensitive_files="""+str(configs["app"]["sensitive_files"])+"""
+sensitive_files="""
+        + str(configs["app"]["sensitive_files"])
+        + """
 
 
 app_basedir=os.getcwd()
@@ -1066,7 +1186,9 @@ admin_indicator="admin"
 
 #the endpoint which the user will be redirected if he accessed a page which requires authentication
 
-home_page_endpoint='"""+home_page_redirect+"""'
+home_page_endpoint='"""
+        + home_page_redirect
+        + """'
 
 
 
@@ -1112,7 +1234,8 @@ Flask_Mailler = flask_mail.Mail(app)
 
 toolbar_app = DebugToolbarExtension(app)
 """
- script3="""from settings import *
+    )
+    script3 = """from settings import *
 
 
 
@@ -1621,8 +1744,8 @@ def download_this(path,root_dir=downloads_folder):
    return send_file(path, as_attachment=True)
  return "Not Found",404
 """
- db_s=get_db_code(configs)
- script4="""from models import *
+    db_s = get_db_code(configs)
+    script4 = """from models import *
 
 
 
@@ -1779,34 +1902,44 @@ def downloads(file):
    return "Not Found",404
  return download_this(path)
 """
- write_file("database.py",db_s)
- write_file("wrappers.py",wrappers)
- write_file("imports.py",script1)
- write_file("settings.py",script2)
- write_file("utils.py",script3)
- if file_exists(configs['app'].get("firebase_creds_file","firebase_creds.json"))==False:
-  write_json(configs['app'].get("firebase_creds_file","firebase_creds.json"),{
-  "type": "service_account",
-  "project_id": "flask-plus",
-  "private_key_id": "646d5064c79d386b7ad42cd2ccd1725c8d7397ea",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCcbG4N5fJaIOm7\nwg4yp4Ct61XvwV0QtMNf4aZqVF6OAKQpcMIGTnibo2iS6BY5k6fAf8h8X75a5EpY\nQ25F3hmZs2r+alq8t9/Ode2artTKA/fOJPc6UInU7kmh5GmzmSnylE/RbEFkS+4n\ncFjVvUW/YWOjsMeOeC2jj3cDvZM0GqcWYfO8TLs0n9KgSJXTEON8hnoJ10pupgoI\n2NkxuyQ5cmyYn32RFlXNap/r3kaNqCcwxEQVfN9ba8JT6K8r25YUrTZSXcLN/1MN\nhrzmFXrBfypkvxGhwa9p4FIIeqcudf3hoJbc4h+OlnlrZV/TSeQvL6rzaQhtkHk9\nGQbdu5O7AgMBAAECggEAKnm3GMcMHDU7wuRa/p5FbvSsjUIwh0zOkMaxbcYjNuQt\nr6MSzKuaTIj+6IVlI5VYxAju4/cLtZqwJW+KDibVRMtXjmZK5Vv4xhN3xb0bww94\nxt161Lbx9oQOMovXuBErNtfXJMMErrt/m+4B8WhH/EPxzo0+Yw13NybJ5pYf1tHJ\nODG/JilwuKy3QDJGV1Gjn8uoB6LQ4/85aN0IFDMSRaFSExHI6M4qeZw1dHdSuwzg\n/MmwadV9vgJoqgcsP3FXwVL05KlM5Ml7i0wmjdZ7wgppp6uYxumt8w8jhNm/PKem\nLDgG7Kprn63lSyFX46ssKxJxh14xEGbor2nmnONUIQKBgQDO6ES1IBh0ixDBpf/w\nxvQ0v0cLJa2Ag8Ingop7sTYIQ6TQhnGHL11Rl2PBu6/LbqJ4PGQldcBjTx6y9oxU\nO5gdOKtNI6y52BfO80Bzj6dZwmmDqbMcasWMxNxHbe6HS5L3AXdhgEMBwT3pq/2B\nd944TxHnDPgDRa6ITdZ7ZTvYBwKBgQDBibwCeyrMPf53gK16RXsQp0cH9ecImMcJ\nXRJWHnt23WlgoCKgjQHCNvdnIEn/Qj4wKvGCLUKA8juWLVD8phH/lQU3YtmFgcCd\nEHB+tQNAlDMd3j5qN5Uf3ztNHwvOi9fhedJGuq6IgrGBhTGfGt+A+aB9Yugfs9Ke\nnhcDv7TxrQKBgDnGackZ2TpRyrAIJluZcn94GeJm9ve30vMtZHX9mdTc7py7rd/N\nvgUWfOiP/BqWHg/s7Rn4s2wHn87hQXYT3fnq5Qp5N7X9PUiwbALYziYmP0hgjn8U\n4WzZW5kmfUCSPctzQV6cbhmDWEJzoCoSyp52lc0qteZUAtRUx9tU/UzpAoGAcC+L\n2RBWRaAl8lWXuYmvBX9BkF69NmGA9m+J4nu267b6j3UjvVcfTtoX3SJ9Ykaez8ME\nzYW4yBAh9DJ+gIUvZ6yVIn7dQiNtaF4QJ5J7uSJu4wBhw6ZGffwjXtgBOxAa6mt4\nNWGfLCg+BqsTkXu9VQDeQ/BiR4YwL5vKEXU9yN0CgYBJuBfWpA/GSrA63hfbHwuE\n7R2fwcbA3SCixKBn0kFWj20k1kIZG+qhL4sdbIhxzUO8K+iscaDYSoxirm52XFg8\n55KCEHqsV2xgmK6Mbxh/1N/0k5KJNJzAploSpdJj23nVOAuAvZxC/yA3EK8Co4Pe\nY9PQq4anhHcyzoQFXN+TcA==\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-8z7xd@flask-plus.iam.gserviceaccount.com",
-  "client_id": "112885768186449207156",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-8z7xd%40flask-plus.iam.gserviceaccount.com"
-}
-)
- write_file("handlings.py",script4)
- write_file("models.py","""from database import *
+    write_file("database.py", db_s)
+    write_file("wrappers.py", wrappers)
+    write_file("imports.py", script1)
+    write_file("settings.py", script2)
+    write_file("utils.py", script3)
+    if (
+        file_exists(configs["app"].get("firebase_creds_file", "firebase_creds.json"))
+        == False
+    ):
+        write_json(
+            configs["app"].get("firebase_creds_file", "firebase_creds.json"),
+            {
+                "type": "service_account",
+                "project_id": "flask-plus",
+                "private_key_id": "646d5064c79d386b7ad42cd2ccd1725c8d7397ea",
+                "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCcbG4N5fJaIOm7\nwg4yp4Ct61XvwV0QtMNf4aZqVF6OAKQpcMIGTnibo2iS6BY5k6fAf8h8X75a5EpY\nQ25F3hmZs2r+alq8t9/Ode2artTKA/fOJPc6UInU7kmh5GmzmSnylE/RbEFkS+4n\ncFjVvUW/YWOjsMeOeC2jj3cDvZM0GqcWYfO8TLs0n9KgSJXTEON8hnoJ10pupgoI\n2NkxuyQ5cmyYn32RFlXNap/r3kaNqCcwxEQVfN9ba8JT6K8r25YUrTZSXcLN/1MN\nhrzmFXrBfypkvxGhwa9p4FIIeqcudf3hoJbc4h+OlnlrZV/TSeQvL6rzaQhtkHk9\nGQbdu5O7AgMBAAECggEAKnm3GMcMHDU7wuRa/p5FbvSsjUIwh0zOkMaxbcYjNuQt\nr6MSzKuaTIj+6IVlI5VYxAju4/cLtZqwJW+KDibVRMtXjmZK5Vv4xhN3xb0bww94\nxt161Lbx9oQOMovXuBErNtfXJMMErrt/m+4B8WhH/EPxzo0+Yw13NybJ5pYf1tHJ\nODG/JilwuKy3QDJGV1Gjn8uoB6LQ4/85aN0IFDMSRaFSExHI6M4qeZw1dHdSuwzg\n/MmwadV9vgJoqgcsP3FXwVL05KlM5Ml7i0wmjdZ7wgppp6uYxumt8w8jhNm/PKem\nLDgG7Kprn63lSyFX46ssKxJxh14xEGbor2nmnONUIQKBgQDO6ES1IBh0ixDBpf/w\nxvQ0v0cLJa2Ag8Ingop7sTYIQ6TQhnGHL11Rl2PBu6/LbqJ4PGQldcBjTx6y9oxU\nO5gdOKtNI6y52BfO80Bzj6dZwmmDqbMcasWMxNxHbe6HS5L3AXdhgEMBwT3pq/2B\nd944TxHnDPgDRa6ITdZ7ZTvYBwKBgQDBibwCeyrMPf53gK16RXsQp0cH9ecImMcJ\nXRJWHnt23WlgoCKgjQHCNvdnIEn/Qj4wKvGCLUKA8juWLVD8phH/lQU3YtmFgcCd\nEHB+tQNAlDMd3j5qN5Uf3ztNHwvOi9fhedJGuq6IgrGBhTGfGt+A+aB9Yugfs9Ke\nnhcDv7TxrQKBgDnGackZ2TpRyrAIJluZcn94GeJm9ve30vMtZHX9mdTc7py7rd/N\nvgUWfOiP/BqWHg/s7Rn4s2wHn87hQXYT3fnq5Qp5N7X9PUiwbALYziYmP0hgjn8U\n4WzZW5kmfUCSPctzQV6cbhmDWEJzoCoSyp52lc0qteZUAtRUx9tU/UzpAoGAcC+L\n2RBWRaAl8lWXuYmvBX9BkF69NmGA9m+J4nu267b6j3UjvVcfTtoX3SJ9Ykaez8ME\nzYW4yBAh9DJ+gIUvZ6yVIn7dQiNtaF4QJ5J7uSJu4wBhw6ZGffwjXtgBOxAa6mt4\nNWGfLCg+BqsTkXu9VQDeQ/BiR4YwL5vKEXU9yN0CgYBJuBfWpA/GSrA63hfbHwuE\n7R2fwcbA3SCixKBn0kFWj20k1kIZG+qhL4sdbIhxzUO8K+iscaDYSoxirm52XFg8\n55KCEHqsV2xgmK6Mbxh/1N/0k5KJNJzAploSpdJj23nVOAuAvZxC/yA3EK8Co4Pe\nY9PQq4anhHcyzoQFXN+TcA==\n-----END PRIVATE KEY-----\n",
+                "client_email": "firebase-adminsdk-8z7xd@flask-plus.iam.gserviceaccount.com",
+                "client_id": "112885768186449207156",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-8z7xd%40flask-plus.iam.gserviceaccount.com",
+            },
+        )
+    write_file("handlings.py", script4)
+    write_file(
+        "models.py",
+        """from database import *
 
 #NOTE: replace "db" variable in the tutorials with "flask_db" and you won't get errors :)
 
-""")
- write_file("templates.py",s1)
- write_file("routes.py",s2)
- write_file(configs["app"].get('name','app')+".py","""from admin_view import *
+""",
+    )
+    write_file("templates.py", s1)
+    write_file("routes.py", s2)
+    write_file(
+        configs["app"].get("name", "app") + ".py",
+        """from admin_view import *
 
 def update_configs():
  d=read_configs()
@@ -1832,9 +1965,15 @@ update_configs()
 
 if __name__ == '__main__':
    app.run(**app_conf)
-""")
- write_file('passenger_wsgi.py',"from "+configs["app"].get('name','app')+" import app as application")
- write_file('admin_view.py',"""from templates import *
+""",
+    )
+    write_file(
+        "passenger_wsgi.py",
+        "from " + configs["app"].get("name", "app") + " import app as application",
+    )
+    write_file(
+        "admin_view.py",
+        """from templates import *
 
 #if you want an admin interface, uncomment this part and follow "flask-admin" 's tutorials 
 
@@ -1843,331 +1982,324 @@ if __name__ == '__main__':
 admin_app = flask_admin.Admin(app, name="Flask's admin page", template_mode='bootstrap3')
 
 '''
-""")
- write_file('runtime.txt','python-'+sys.version.split(" ")[0])
- os.makedirs("templates", exist_ok=True)
- os.makedirs("logs", exist_ok=True)
- if configs["app"].get('uploads',None)!=None:
-  os.makedirs("uploads", exist_ok=True)
- os.makedirs("static", exist_ok=True)
- os.makedirs("tmp", exist_ok=True)
- os.makedirs("backup", exist_ok=True)
- os.makedirs("static/img", exist_ok=True)
- os.makedirs("static/css", exist_ok=True)
- os.makedirs("static/js", exist_ok=True)
- if configs["app"].get('templates',[])!=[]:
-  for x in configs["app"].get('templates',[]):
-   if file_exists("templates/"+x)==False:
-    create_file("templates/"+x)
- if configs["app"].get('static',None)!=None:
-  for x in configs["app"]["static"]:
-   if file_exists("static/"+x)==False:
-    create_file("static/"+x)
- write_file('Procfile','web: gunicorn '+configs["app"].get('name','app')+':app')
-
-
+""",
+    )
+    write_file("runtime.txt", "python-" + sys.version.split(" ")[0])
+    os.makedirs("templates", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+    if configs["app"].get("uploads", None) != None:
+        os.makedirs("uploads", exist_ok=True)
+    os.makedirs("static", exist_ok=True)
+    os.makedirs("tmp", exist_ok=True)
+    os.makedirs("backup", exist_ok=True)
+    os.makedirs("static/img", exist_ok=True)
+    os.makedirs("static/css", exist_ok=True)
+    os.makedirs("static/js", exist_ok=True)
+    if configs["app"].get("templates", []) != []:
+        for x in configs["app"].get("templates", []):
+            if file_exists("templates/" + x) == False:
+                create_file("templates/" + x)
+    if configs["app"].get("static", None) != None:
+        for x in configs["app"]["static"]:
+            if file_exists("static/" + x) == False:
+                create_file("static/" + x)
+    write_file(
+        "Procfile", "web: gunicorn " + configs["app"].get("name", "app") + ":app"
+    )
 
 
 def init_configs():
- configs={
-    "app":
-        {
-         "name":
-                "app",
-         "run":{
-                "host":
-                        "0.0.0.0",
-                "port":
-                        5000,
-                "threaded":
-                        True,
-                "ssl_context":
-                        None,
-                "processes":
-                        1
-                },
-         "config":{
-                'ENV': 'development', 
-                'DEBUG': True, 
-                'TESTING': False, 
-                'PROPAGATE_EXCEPTIONS': None, 
-                'PRESERVE_CONTEXT_ON_EXCEPTION': None, 
-                'SECRET_KEY': random_string(64), 
-                'USE_X_SENDFILE': False, 
-                'SERVER_NAME': None, 
-                'APPLICATION_ROOT': '/', 
-                'SESSION_COOKIE_NAME': 'FPSessionId', 
-                'SESSION_COOKIE_DOMAIN': None, 
-                'SESSION_COOKIE_PATH': None, 
-                'SESSION_COOKIE_HTTPONLY': False, 
-                'SESSION_COOKIE_SECURE': None, 
-                'SESSION_COOKIE_SAMESITE': 'Lax', 
-                'SESSION_REFRESH_EACH_REQUEST': True, 
-                'MAX_CONTENT_LENGTH': None, 
-                'SEND_FILE_MAX_AGE_DEFAULT': None, 
-                'TRAP_BAD_REQUEST_ERRORS': None, 
-                'TRAP_HTTP_EXCEPTIONS': False, 
-                'EXPLAIN_TEMPLATE_LOADING': False, 
-                'PREFERRED_URL_SCHEME': 'http', 
-                'JSON_AS_ASCII': True, 
-                'JSON_SORT_KEYS': True, 
-                'JSONIFY_PRETTYPRINT_REGULAR': False, 
-                'JSONIFY_MIMETYPE': 'application/json', 
-                'TEMPLATES_AUTO_RELOAD': None, 
-                'MAX_COOKIE_SIZE': 4093, 
-                'FLASK_ENV': 'development',
-                'MAX_CONTENT_LENGTH': 50 * 1024 * 1024,
-                'RECAPTCHA_SITE_KEY':None,
-                'RECAPTCHA_SECRET_KEY':None,
-                'MAIL_SERVER':'smtp.gmail.com',
-                'MAIL_PORT':465,
-                'MAIL_USERNAME':'flask.plus@gmail.com',
-                'MAIL_PASSWORD':'Flaskplus99',
-                'MAIL_USE_TLS':False,
-                'MAIL_USE_SSL':True
-                },
-        "session_timeout":
-                {
-                    "days": 30
-                },
-        "sensitive_files":
-                ['.pyc','.py', '.sql','.db'],
-        "allowed_file_extensions":
-                ['png','jpg','jpeg','gif','pdf'],
-        "allowed_mimetypes":
-                ["application/pdf","application/x-pdf","image/png","image/jpg","image/jpeg","image/jpeg"],
-        "accepted_referer_domains":
-                [],
-        "accepted_origin_domains":
-                [],
-        "firebase_creds_file":
-                "firebase_creds.json",
-        "firebase_bucket":
-                'flask-plus.appspot.com',
-        "firebase_apikey":
-                "AIzaSyD13N7xRICcaMCQdqIpfWNXItlYnN-DiqI",
-        "vonage_creds":
-                {
-                 "api_key": '',
-                 "api_secret":''
-                },
-        "additional_headers":
-                {
-                'X-Frame-Options':'SAMEORIGIN',
-                'X-Content-Type-Options': 'nosniff',
-                'Referrer-Policy': 'same-origin',
-                'Server':flask_man_version,
-                'X-Permitted-Cross-Domain-Policies': 'none',
-                'Permissions-Policy': "geolocation 'none'; camera 'none'; speaker 'none';"
-                },
-        "routes":
-            ["/"],
-        "templates":
-            ["index.html"],
-        "static":
-            [],
-        "uploads":
-            [],
-        "models":
-            [],
-        "requirements":
-            ["flask","sanitizy","flask-limiter","vonage","flask-admin","flask-debugtoolbar","git+https://github.com/ozgur/python-firebase","firebase-admin","google-cloud-storage","Flask-SQLAlchemy","Flask-reCaptcha","Flask-Mail","werkzeug","gunicorn","itsdangerous","Jinja2"],
-        "pip":
-            "pip" if sys.version_info < (3,0) else "pip3"
+    configs = {
+        "app": {
+            "name": "app",
+            "run": {
+                "host": "0.0.0.0",
+                "port": 5000,
+                "threaded": True,
+                "ssl_context": None,
+                "processes": 1,
+            },
+            "config": {
+                "ENV": "development",
+                "DEBUG": True,
+                "TESTING": False,
+                "PROPAGATE_EXCEPTIONS": None,
+                "PRESERVE_CONTEXT_ON_EXCEPTION": None,
+                "SECRET_KEY": random_string(64),
+                "USE_X_SENDFILE": False,
+                "SERVER_NAME": None,
+                "APPLICATION_ROOT": "/",
+                "SESSION_COOKIE_NAME": "FPSessionId",
+                "SESSION_COOKIE_DOMAIN": None,
+                "SESSION_COOKIE_PATH": None,
+                "SESSION_COOKIE_HTTPONLY": False,
+                "SESSION_COOKIE_SECURE": None,
+                "SESSION_COOKIE_SAMESITE": "Lax",
+                "SESSION_REFRESH_EACH_REQUEST": True,
+                "MAX_CONTENT_LENGTH": None,
+                "SEND_FILE_MAX_AGE_DEFAULT": None,
+                "TRAP_BAD_REQUEST_ERRORS": None,
+                "TRAP_HTTP_EXCEPTIONS": False,
+                "EXPLAIN_TEMPLATE_LOADING": False,
+                "PREFERRED_URL_SCHEME": "http",
+                "JSON_AS_ASCII": True,
+                "JSON_SORT_KEYS": True,
+                "JSONIFY_PRETTYPRINT_REGULAR": False,
+                "JSONIFY_MIMETYPE": "application/json",
+                "TEMPLATES_AUTO_RELOAD": None,
+                "MAX_COOKIE_SIZE": 4093,
+                "FLASK_ENV": "development",
+                "MAX_CONTENT_LENGTH": 50 * 1024 * 1024,
+                "RECAPTCHA_SITE_KEY": None,
+                "RECAPTCHA_SECRET_KEY": None,
+                "MAIL_SERVER": "smtp.gmail.com",
+                "MAIL_PORT": 465,
+                "MAIL_USERNAME": "flask.plus@gmail.com",
+                "MAIL_PASSWORD": "Flaskplus99",
+                "MAIL_USE_TLS": False,
+                "MAIL_USE_SSL": True,
+            },
+            "session_timeout": {"days": 30},
+            "sensitive_files": [".pyc", ".py", ".sql", ".db"],
+            "allowed_file_extensions": ["png", "jpg", "jpeg", "gif", "pdf"],
+            "allowed_mimetypes": [
+                "application/pdf",
+                "application/x-pdf",
+                "image/png",
+                "image/jpg",
+                "image/jpeg",
+                "image/jpeg",
+            ],
+            "accepted_referer_domains": [],
+            "accepted_origin_domains": [],
+            "firebase_creds_file": "firebase_creds.json",
+            "firebase_bucket": "flask-plus.appspot.com",
+            "firebase_apikey": "AIzaSyD13N7xRICcaMCQdqIpfWNXItlYnN-DiqI",
+            "vonage_creds": {"api_key": "", "api_secret": ""},
+            "additional_headers": {
+                "X-Frame-Options": "SAMEORIGIN",
+                "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "same-origin",
+                "Server": flask_man_version,
+                "X-Permitted-Cross-Domain-Policies": "none",
+                "Permissions-Policy": "geolocation 'none'; camera 'none'; speaker 'none';",
+            },
+            "routes": ["/"],
+            "templates": ["index.html"],
+            "static": [],
+            "uploads": [],
+            "models": [],
+            "requirements": [
+                "flask",
+                "sanitizy",
+                "flask-limiter",
+                "vonage",
+                "flask-admin",
+                "flask-debugtoolbar",
+                "git+https://github.com/ozgur/python-firebase",
+                "firebase-admin",
+                "google-cloud-storage",
+                "Flask-SQLAlchemy",
+                "Flask-reCaptcha",
+                "Flask-Mail",
+                "werkzeug",
+                "gunicorn",
+                "itsdangerous",
+                "Jinja2",
+            ],
+            "pip": "pip" if sys.version_info < (3, 0) else "pip3",
         },
-    "sqlite":
-            {
-                "connection":
-                        {
-                        "file":
-                            "flask_man_db.db",
-                        "isolation_level":
-                            None
-                        },
-                "database_connector":
-                        "sqlite3"
-                            
+        "sqlite": {
+            "connection": {"file": "flask_man_db.db", "isolation_level": None},
+            "database_connector": "sqlite3",
+        },
+        "mysql": {
+            "connection": {
+                "host": "localhost",
+                "user": "root",
+                "passwd": "",
+                "port": 3306,
+                "db": "flask_man_db",
+                "autocommit": True,
             },
-	"mysql":{
-                "connection":
-                    {
-                        "host":
-                                "localhost",
-                        "user":
-                                "root",
-                        "passwd":
-                                "",
-                        "port":
-                                3306,
-                        "db":
-                                "flask_man_db",
-                        "autocommit":
-                                True
-                    },
-                "database_connector":
-                        "pymysql"
-			},
-    "mariadb":{
-                "connection":
-                    {
-                        "host":
-                                "localhost",
-                        "user":
-                                "root",
-                        "passwd":
-                                "",
-                        "port":
-                                3306,
-                        "db":
-                                "flask_man_db",
-                        "autocommit":
-                                True
-                    },
-                "database_connector":
-                        "pymysql"
-			},
-    "oracle":{
-                "connection":
-                    {
-                        "dsn":
-                                "localhost/flask_man_db",
-                        "user":
-                                "root",
-                        "password":
-                                ""
-                    },
-                "database_connector":
-                        "cx_Oracle"
-			},
-    "postgresql":{
-                "connection":
-                    "host=localhost dbname=flask_man_db user=postgres password=root",
-                "database_connector":
-                        "psycopg2"
-			},
-    "mssql":{
-                "connection":
-                    "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=flask_man_db;UID=user;PWD=user",
-                "database_connector":
-                        "pyodbc"
-			},
-    "database":
-			{
-				"tables_names":
-						None,
-                "database_type":
-                        "sqlite",
-                "tables":
-                        {},
-                "values":
-                        {},
-                "tables_example_sqlite":
-                        {
-                            "users_example":
-                                {
-                                    "id": 
-                                        "INTEGER PRIMARY KEY AUTOINCREMENT  not null",
-                                    "name":
-                                        "varchar(20)",
-                                    "pwd":
-                                        "varchar(20)"
-                                },
-                            "articles_example":
-                                {
-                                    "id": 
-                                        "INTEGER PRIMARY KEY AUTOINCREMENT  not null",
-                                    "title":
-                                        "varchar(20)",
-                                    "content":
-                                        "text"
-                                }
-                        },
-                "values_example":
-                        {
-                            "users_example":
-                                    {
-                                        "name,pwd":
-                                                [("admin","password"),("user","user")],
-                                    },
-                            "articles_example":
-                                    {
-                                        "title,content":
-                                                [("test","this is a test.")]
-                                    }
-                            
-                        }
+            "database_connector": "pymysql",
+        },
+        "mariadb": {
+            "connection": {
+                "host": "localhost",
+                "user": "root",
+                "passwd": "",
+                "port": 3306,
+                "db": "flask_man_db",
+                "autocommit": True,
             },
-	"secret_token":
-			random_string(64)
-}
+            "database_connector": "pymysql",
+        },
+        "oracle": {
+            "connection": {
+                "dsn": "localhost/flask_man_db",
+                "user": "root",
+                "password": "",
+            },
+            "database_connector": "cx_Oracle",
+        },
+        "postgresql": {
+            "connection": "host=localhost dbname=flask_man_db user=postgres password=root",
+            "database_connector": "psycopg2",
+        },
+        "mssql": {
+            "connection": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=flask_man_db;UID=user;PWD=user",
+            "database_connector": "pyodbc",
+        },
+        "database": {
+            "tables_names": None,
+            "database_type": "sqlite",
+            "tables": {},
+            "values": {},
+            "tables_example_sqlite": {
+                "users_example": {
+                    "id": "INTEGER PRIMARY KEY AUTOINCREMENT  not null",
+                    "name": "varchar(20)",
+                    "pwd": "varchar(20)",
+                },
+                "articles_example": {
+                    "id": "INTEGER PRIMARY KEY AUTOINCREMENT  not null",
+                    "title": "varchar(20)",
+                    "content": "text",
+                },
+            },
+            "values_example": {
+                "users_example": {
+                    "name,pwd": [("admin", "password"), ("user", "user")],
+                },
+                "articles_example": {"title,content": [("test", "this is a test.")]},
+            },
+        },
+        "secret_token": random_string(64),
+    }
 
- write_configs(configs)
+    write_configs(configs)
+
 
 def init_app():
- create_app_script(read_configs())
+    create_app_script(read_configs())
 
 
-def set_database(data,db):
- a=[]
- try:
-  if data[db]["database_connector"].isalnum() ==True:
-   create_mysql_db(data[db]["connection"],eval(data[db]["database_connector"]))
-  co=get_connection(data[db]["connection"],eval(data[db]["database_connector"]))
-  cu=get_cursor(co)
-  t=data["database"]["tables"]
-  for x in t:
-   a.append({x: [ i for i in t[x]]})
-   cu.execute("CREATE TABLE IF NOT EXISTS "+x+" ( "+' , '.join([ i+" "+t[x][i] for i in t[x]])+" )")
-  data["database"]["tables_names"]=a
-  t=data["database"]["values"]
-  for x in t:
-   p_h=' , '.join([ "%s" for y in [''.join([ i for i in t[x]]).split(',')][0]])
-   val_p=[ i for i in t[x]][0]
-   val=t[x][val_p]
-   cu.executemany("INSERT INTO "+x+" ( "+''.join([ i for i in t[x]])+" ) VALUES ( " +p_h+" )",val)
-  cu.close()
-  co.close()
- except Exception as ex:
-  print(ex)
- data["database"]["tables_names"]=a
- data["database"]["database_type"]=db
- write_configs(data)
+def set_database(data, db):
+    a = []
+    try:
+        if data[db]["database_connector"].isalnum() == True:
+            create_mysql_db(
+                data[db]["connection"], eval(data[db]["database_connector"])
+            )
+        co = get_connection(
+            data[db]["connection"], eval(data[db]["database_connector"])
+        )
+        cu = get_cursor(co)
+        t = data["database"]["tables"]
+        for x in t:
+            a.append({x: [i for i in t[x]]})
+            cu.execute(
+                "CREATE TABLE IF NOT EXISTS "
+                + x
+                + " ( "
+                + " , ".join([i + " " + t[x][i] for i in t[x]])
+                + " )"
+            )
+        data["database"]["tables_names"] = a
+        t = data["database"]["values"]
+        for x in t:
+            p_h = " , ".join(["%s" for y in ["".join([i for i in t[x]]).split(",")][0]])
+            val_p = [i for i in t[x]][0]
+            val = t[x][val_p]
+            cu.executemany(
+                "INSERT INTO "
+                + x
+                + " ( "
+                + "".join([i for i in t[x]])
+                + " ) VALUES ( "
+                + p_h
+                + " )",
+                val,
+            )
+        cu.close()
+        co.close()
+    except Exception as ex:
+        print(ex)
+    data["database"]["tables_names"] = a
+    data["database"]["database_type"] = db
+    write_configs(data)
 
 
-
-def save_file(f,path='tmp'):
- os.makedirs(path, exist_ok=True)
- return sanitizy.FILE_UPLOAD.save_file(f,path=path)
+def save_file(f, path="tmp"):
+    os.makedirs(path, exist_ok=True)
+    return sanitizy.FILE_UPLOAD.save_file(f, path=path)
 
 
 def set_sqlite_database(data):
- co=get_sqlite_connection(data["sqlite"]["connection"])
- cu=get_cursor(co)
- t=data["database"]["tables"]
- a=[]
- for x in t:
-  a.append({x: [ i for i in t[x]]})
-  cu.execute("CREATE TABLE IF NOT EXISTS "+x+" ( "+' , '.join([ i+" "+t[x][i] for i in t[x]])+" )")
- data["database"]["tables_names"]=a
- t=data["database"]["values"]
- for x in t:
-  p_h=' , '.join([ "?" for y in [''.join([ i for i in t[x]]).split(',')][0]])
-  val_p=[ i for i in t[x]][0]
-  val=t[x][val_p]
-  cu.executemany("INSERT INTO "+x+" ( "+''.join([ i for i in t[x]])+" ) VALUES ( " +p_h+" )",val)
- cu.close()
- co.close()
- data["database"]["tables_names"]=a
- data["database"]["database_type"]="sqlite"
- write_configs(data)
+    co = get_sqlite_connection(data["sqlite"]["connection"])
+    cu = get_cursor(co)
+    t = data["database"]["tables"]
+    a = []
+    for x in t:
+        a.append({x: [i for i in t[x]]})
+        cu.execute(
+            "CREATE TABLE IF NOT EXISTS "
+            + x
+            + " ( "
+            + " , ".join([i + " " + t[x][i] for i in t[x]])
+            + " )"
+        )
+    data["database"]["tables_names"] = a
+    t = data["database"]["values"]
+    for x in t:
+        p_h = " , ".join(["?" for y in ["".join([i for i in t[x]]).split(",")][0]])
+        val_p = [i for i in t[x]][0]
+        val = t[x][val_p]
+        cu.executemany(
+            "INSERT INTO "
+            + x
+            + " ( "
+            + "".join([i for i in t[x]])
+            + " ) VALUES ( "
+            + p_h
+            + " )",
+            val,
+        )
+    cu.close()
+    co.close()
+    data["database"]["tables_names"] = a
+    data["database"]["database_type"] = "sqlite"
+    write_configs(data)
 
-supported_dbs=["sqlite","mysql","mariadb","postgresql","mssql","oracle"]
-supported_inits=["app","config","install"]
-supported_args=["init","db","upgrade","examples","add_model","delete_model","add_template","delete_template","add_route","delete_route","firebase_apikey","firebase_bucket","firebase_configs","manager","pro","dev"]
+
+supported_dbs = ["sqlite", "mysql", "mariadb", "postgresql", "mssql", "oracle"]
+supported_inits = ["app", "config", "install"]
+supported_args = [
+    "init",
+    "db",
+    "upgrade",
+    "examples",
+    "add_model",
+    "delete_model",
+    "add_template",
+    "delete_template",
+    "add_route",
+    "delete_route",
+    "firebase_apikey",
+    "firebase_bucket",
+    "firebase_configs",
+    "manager",
+    "pro",
+    "dev",
+]
+
 
 def help_msg(e):
-  dbs=" or ".join(supported_dbs)
-  print(e+"""
+    dbs = " or ".join(supported_dbs)
+    print(
+        e
+        + """
 
 Usage:
         
@@ -2189,7 +2321,9 @@ args:
               code and setup configurations, and to install required packages 
         
 
-        db: to choose database type to use ( """+dbs+""" )
+        db: to choose database type to use ( """
+        + dbs
+        + """ )
         
 
         add_template: create a template file with that path in the 
@@ -2231,11 +2365,13 @@ args:
         pro: set project to production mode
         
         
-        dev: set project to development mode""")
+        dev: set project to development mode"""
+    )
 
 
 def examples_msg():
- print("""** Launching the web interface:
+    print(
+        """** Launching the web interface:
 
 
 Example:
@@ -2469,151 +2605,153 @@ Example :
 Example :
 
 
-        flask_man dev""")
+        flask_man dev"""
+    )
 
 
-
-def csrf_referer_checker(req,allowed_domains=[]):
- return sanitizy.CSRF.validate_flask(req,allowed_domains=allowed_domains)
-
+def csrf_referer_checker(req, allowed_domains=[]):
+    return sanitizy.CSRF.validate_flask(req, allowed_domains=allowed_domains)
 
 
 def get_templates_routes():
- try:
-  d=read_configs()
- except:
-  return ''
- return ''.join([ "<option value='{}'>{}</option>".format(x,x) for x in d["app"]["templates"]+d["app"]["routes"]])
+    try:
+        d = read_configs()
+    except:
+        return ""
+    return "".join(
+        [
+            "<option value='{}'>{}</option>".format(x, x)
+            for x in d["app"]["templates"] + d["app"]["routes"]
+        ]
+    )
 
 
 def get_models():
- try:
-  d=read_configs()
- except:
-  return ''
- return ''.join([ "<option value='{}'>{}</option>".format(x,x) for x in d["app"]["models"]])
+    try:
+        d = read_configs()
+    except:
+        return ""
+    return "".join(
+        ["<option value='{}'>{}</option>".format(x, x) for x in d["app"]["models"]]
+    )
 
 
 def manager():
- app = Flask(__name__)
- 
- 
- @app.before_request
- def validate():
-  if request.method=='POST' and csrf_referer_checker(request)==False:
-   return "Unauthorized",401
- 
- @app.route('/add',methods=["POST"])
- def add():
-  t=request.form.get("type",'')
-  a=request.form.get("template",'').split(',')
-  if t=='template':
-   for x in a:
-    if x.strip()!='':
-     add_template(x)
-  else:
-   for x in a:
-    if x.strip()!='':
-     add_route(x)
-  return redirect('/')
-  
-  
- @app.route('/delete',methods=["POST"])
- def delete():
-  t=request.form.get("type",'')
-  a=request.form.get("template",'').split(',')
-  if t=='template':
-   if a.strip()!='':
-     delete_template(a)
-  else:
-   if a.strip()!='':
-     delete_route(a)
-  return redirect('/')
+    app = Flask(__name__)
 
- @app.route('/add_m',methods=["POST"])
- def add_m():
-  a=request.form.get("model",'').split(',')
-  for x in a:
-   if x.strip()!='':
-    add_model(x)
-  return redirect('/')
-  
-  
- @app.route('/delete_m',methods=["POST"])
- def delete_m():
-  a=request.form.get('model','')
-  if a.strip()!='':
-   delete_model(request.form["model"])
-  return redirect('/')
+    @app.before_request
+    def validate():
+        if request.method == "POST" and csrf_referer_checker(request) == False:
+            return "Unauthorized", 401
 
- @app.route('/db',methods=["POST"])
- def db():
-  t=request.form.get("db",'')
-  if t in supported_dbs:
-   os.system('flask_man db '+t)
-  return redirect('/') 
-  
-  
- @app.route('/go',methods=["POST"])
- def go():
-  t=request.form.get("go",'')
-  if t in ["dev","pro"]:
-   os.system('flask_man '+t)
-  return redirect('/') 
-  
-  
- @app.route('/create',methods=["POST"])
- def create():
-  t=request.form.get("db",'')
-  if t in supported_dbs:
-   if file_exists('config.json')==False:
-    os.system('flask_man init config')
-   os.system('flask_man db '+t)
-   os.system('flask_man init app')
-   os.system('flask_man init install')
-  return redirect('/') 
- 
- 
- 
- @app.route('/fsb',methods=["POST"])
- def fsb():
-  t=request.form["name"]
-  set_firebase_bucket(t)
-  return redirect('/') 
- 
- 
- @app.route('/fsb_conf',methods=["POST"])
- def fsb_conf():
-  d=read_configs()
-  t=save_file(request.files["path"],path=bind_path('tmp','config'))
-  write_firebase_configs_(t)
-  os.remove(t)
-  return redirect('/') 
-  
- 
- @app.route('/fb_key',methods=["POST"])
- def fb_key():
-  set_firebase_apikey(request.form["key"])
-  return redirect('/') 
- 
- @app.route('/upgrade',methods=["POST"])
- def upgrade_():
-  upgrade()
-  return redirect('/')  
- 
- 
- @app.route('/backup',methods=["POST"])
- def backup():
-  shutil.rmtree("backup", ignore_errors=True)
-  os.makedirs("backup", exist_ok=True)
-  path=bind_path('backup','flask-app-backup-'+datetime.datetime.now().strftime("%Y-%b-%d-%H-%M-%S"))
-  return send_file(shutil.make_archive(path , 'zip', root_dir='.'), as_attachment=True)
- 
- @app.route('/',methods=["GET"])
- def home():
-  tr=get_templates_routes()
-  mo=get_models()
-  return """
+    @app.route("/add", methods=["POST"])
+    def add():
+        t = request.form.get("type", "")
+        a = request.form.get("template", "").split(",")
+        if t == "template":
+            for x in a:
+                if x.strip() != "":
+                    add_template(x)
+        else:
+            for x in a:
+                if x.strip() != "":
+                    add_route(x)
+        return redirect("/")
+
+    @app.route("/delete", methods=["POST"])
+    def delete():
+        t = request.form.get("type", "")
+        a = request.form.get("template", "").split(",")
+        if t == "template":
+            if a.strip() != "":
+                delete_template(a)
+        else:
+            if a.strip() != "":
+                delete_route(a)
+        return redirect("/")
+
+    @app.route("/add_m", methods=["POST"])
+    def add_m():
+        a = request.form.get("model", "").split(",")
+        for x in a:
+            if x.strip() != "":
+                add_model(x)
+        return redirect("/")
+
+    @app.route("/delete_m", methods=["POST"])
+    def delete_m():
+        a = request.form.get("model", "")
+        if a.strip() != "":
+            delete_model(request.form["model"])
+        return redirect("/")
+
+    @app.route("/db", methods=["POST"])
+    def db():
+        t = request.form.get("db", "")
+        if t in supported_dbs:
+            os.system("flask_man db " + t)
+        return redirect("/")
+
+    @app.route("/go", methods=["POST"])
+    def go():
+        t = request.form.get("go", "")
+        if t in ["dev", "pro"]:
+            os.system("flask_man " + t)
+        return redirect("/")
+
+    @app.route("/create", methods=["POST"])
+    def create():
+        t = request.form.get("db", "")
+        if t in supported_dbs:
+            if file_exists("config.json") == False:
+                os.system("flask_man init config")
+            os.system("flask_man db " + t)
+            os.system("flask_man init app")
+            os.system("flask_man init install")
+        return redirect("/")
+
+    @app.route("/fsb", methods=["POST"])
+    def fsb():
+        t = request.form["name"]
+        set_firebase_bucket(t)
+        return redirect("/")
+
+    @app.route("/fsb_conf", methods=["POST"])
+    def fsb_conf():
+        d = read_configs()
+        t = save_file(request.files["path"], path=bind_path("tmp", "config"))
+        write_firebase_configs_(t)
+        os.remove(t)
+        return redirect("/")
+
+    @app.route("/fb_key", methods=["POST"])
+    def fb_key():
+        set_firebase_apikey(request.form["key"])
+        return redirect("/")
+
+    @app.route("/upgrade", methods=["POST"])
+    def upgrade_():
+        upgrade()
+        return redirect("/")
+
+    @app.route("/backup", methods=["POST"])
+    def backup():
+        shutil.rmtree("backup", ignore_errors=True)
+        os.makedirs("backup", exist_ok=True)
+        path = bind_path(
+            "backup",
+            "flask-app-backup-" + datetime.datetime.now().strftime("%Y-%b-%d-%H-%M-%S"),
+        )
+        return send_file(
+            shutil.make_archive(path, "zip", root_dir="."), as_attachment=True
+        )
+
+    @app.route("/", methods=["GET"])
+    def home():
+        tr = get_templates_routes()
+        mo = get_models()
+        return (
+            """
   <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
             "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
@@ -2702,10 +2840,14 @@ html body {
     </style>
 
     <meta name="Title" CONTENT="flask_man's project manager">
-    <title>Flask's project manager """+__version__+"""</title>
+    <title>Flask's project manager """
+            + __version__
+            + """</title>
 </head>
 <body><br>
-<center><h1>Flask's project manager:<br>v"""+__version__+"""</h1></center>
+<center><h1>Flask's project manager:<br>v"""
+            + __version__
+            + """</h1></center>
 
 
 <center>
@@ -2793,7 +2935,9 @@ html body {
          <div class="input-group input-group-lg">
          <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Path:&nbsp;  &nbsp;</p></b> </td>
          <td><select class="form-control" name="template" id="template">
-         """+tr+"""
+         """
+            + tr
+            + """
          
          </select></td>
          <td><select class="form-control" name="type" id="type">
@@ -2828,7 +2972,9 @@ html body {
          <div class="input-group input-group-lg">
          <tr><td style="text-align: center; vertical-align: middle;"><b><p style='color:green'>Model:&nbsp;  &nbsp;</p></b> </td>
          <td><select class="form-control" name="model" id="template">
-         """+mo+"""
+         """
+            + mo
+            + """
          
          </select></td>
          </td><td><div class="col text-center"><input id="btn" type="submit" class="button btn-block btn-lg" value="Delete" /></div></td></tr>
@@ -2906,93 +3052,94 @@ html body {
 </center>
 <center><h4>&copy; Copyright <a href="https://github.com/AlaBouali" target="_blank">Ala Bouali</a><br><br></h4><h6><center>Python/PHP Dev since 2017, Pentester, Linux<br> System Administrator and Freelancer since 2019
 <br><br><br>See Also:&nbsp;&nbsp;<a href="https://github.com/AlaBouali/bane" target="_blank">Bane</a>&nbsp;,&nbsp;<a href="https://github.com/AlaBouali/xtelnet" target="_blank">Xtelnet</a>&nbsp;,&nbsp;<a href="https://github.com/AlaBouali/sanitizy" target="_blank">Sanitizy</a><br></h6></center><br>"""
- 
- app.run(port=12345)
+        )
+
+    app.run(port=12345)
 
 
 def main():
- if len(sys.argv)<2:
-  help_msg("Missing arguments")
-  sys.exit()
- if sys.argv[1] not in supported_args:
-  help_msg('Unknown arguments')
-  sys.exit()
- if sys.argv[1]=="upgrade":
-  upgrade()
-  sys.exit()
- if sys.argv[1]=="pro":
-  go_pro()
-  sys.exit()
- if sys.argv[1]=="dev":
-  go_dev()
-  sys.exit()
- if sys.argv[1]=="manager":
-  manager()
-  sys.exit()
- if sys.argv[1]=="examples":
-  examples_msg()
-  sys.exit()
- if sys.argv[1]=="add_model":
-  add_model(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="delete_model":
-  delete_model(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="add_template":
-  add_template(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="delete_template":
-  delete_template(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="add_route":
-  add_route(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="delete_route":
-  delete_route(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="firebase_bucket":
-  set_firebase_bucket(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="firebase_apikey":
-  set_firebase_apikey(sys.argv[2])
-  sys.exit()
- if sys.argv[1]=="firebase_configs":
-  file_=sys.argv[2]
-  write_firebase_configs_(file_)
-  sys.exit()
- if sys.argv[2] not in supported_dbs and sys.argv[2] not in supported_inits:
-  help_msg('Unknown arguments')
-  sys.exit()
- if sys.argv[1]=="init" and sys.argv[2]=="config":
-  init_configs()
-  sys.exit()
- if sys.argv[1]=="init" and sys.argv[2]=="app":
-  try:
-    init_app()
-  except Exception as e:
-   print(e)
-   help_msg('Missing configs ! Try runing: flask_man init config')
-  sys.exit()
- if sys.argv[1]=="init" and sys.argv[2]=="install":
-  try:
-   install()
-  except Exception as e:
-   print(e)
-   help_msg('Missing configs ! Try runing: flask_man init config')
-  sys.exit()
- if sys.argv[1]=="db" and sys.argv[2] in supported_dbs:
-  try:
-   conf=read_configs()
-  except Exception as ex:
-   print(ex)
-   print('Failed to load configs !! Try to run first: flask_man init')
-   sys.exit()
-  if  sys.argv[2]=="sqlite":
-   set_sqlite_database(conf)
-  else:
-   set_database(conf,sys.argv[2])
-  if file_exists('database.py')==True:
-   write_file('database.py',get_db_code(conf))
- else:
-  help_msg('Unknown Database type')
- sys.exit() 
+    if len(sys.argv) < 2:
+        help_msg("Missing arguments")
+        sys.exit()
+    if sys.argv[1] not in supported_args:
+        help_msg("Unknown arguments")
+        sys.exit()
+    if sys.argv[1] == "upgrade":
+        upgrade()
+        sys.exit()
+    if sys.argv[1] == "pro":
+        go_pro()
+        sys.exit()
+    if sys.argv[1] == "dev":
+        go_dev()
+        sys.exit()
+    if sys.argv[1] == "manager":
+        manager()
+        sys.exit()
+    if sys.argv[1] == "examples":
+        examples_msg()
+        sys.exit()
+    if sys.argv[1] == "add_model":
+        add_model(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "delete_model":
+        delete_model(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "add_template":
+        add_template(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "delete_template":
+        delete_template(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "add_route":
+        add_route(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "delete_route":
+        delete_route(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "firebase_bucket":
+        set_firebase_bucket(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "firebase_apikey":
+        set_firebase_apikey(sys.argv[2])
+        sys.exit()
+    if sys.argv[1] == "firebase_configs":
+        file_ = sys.argv[2]
+        write_firebase_configs_(file_)
+        sys.exit()
+    if sys.argv[2] not in supported_dbs and sys.argv[2] not in supported_inits:
+        help_msg("Unknown arguments")
+        sys.exit()
+    if sys.argv[1] == "init" and sys.argv[2] == "config":
+        init_configs()
+        sys.exit()
+    if sys.argv[1] == "init" and sys.argv[2] == "app":
+        try:
+            init_app()
+        except Exception as e:
+            print(e)
+            help_msg("Missing configs ! Try runing: flask_man init config")
+        sys.exit()
+    if sys.argv[1] == "init" and sys.argv[2] == "install":
+        try:
+            install()
+        except Exception as e:
+            print(e)
+            help_msg("Missing configs ! Try runing: flask_man init config")
+        sys.exit()
+    if sys.argv[1] == "db" and sys.argv[2] in supported_dbs:
+        try:
+            conf = read_configs()
+        except Exception as ex:
+            print(ex)
+            print("Failed to load configs !! Try to run first: flask_man init")
+            sys.exit()
+        if sys.argv[2] == "sqlite":
+            set_sqlite_database(conf)
+        else:
+            set_database(conf, sys.argv[2])
+        if file_exists("database.py") == True:
+            write_file("database.py", get_db_code(conf))
+    else:
+        help_msg("Unknown Database type")
+    sys.exit()
